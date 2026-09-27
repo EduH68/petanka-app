@@ -1,15 +1,35 @@
-let players = JSON.parse(localStorage.getItem('petanka_players')) || [];
-let tournaments = JSON.parse(localStorage.getItem('petanka_tournaments')) || [];
-let matches = JSON.parse(localStorage.getItem('petanka_matches')) || [];
+// ==========================================
+// CONFIGURACIÓN DE SUPABASE
+// ==========================================
+const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co"; // Tu URL de la captura
+const SUPABASE_KEY = "sb_publishable_LAz12AtV1aLq84htjmowWQ_Qxnc02zu";             // Pega tu clave anon/public aquí
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let players = [];
+let tournaments = [];
+let matches = [];
 let currentTournamentId = null;
 
-// Matriz de puntos base según la posición (Índice 0 = 1º Lugar)
+// Matriz de puntos base por posición (1º = 10, 2º = 8, etc.)
 const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
 
-function saveState() {
-    localStorage.setItem('petanka_players', JSON.stringify(players));
-    localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
-    localStorage.setItem('petanka_matches', JSON.stringify(matches));
+// Cargar todos los datos sincronizados desde la nube
+async function loadDataFromCloud() {
+    try {
+        const { data: pData } = await db.from('players').select('*');
+        if (pData) players = pData;
+
+        const { data: tData } = await db.from('tournaments').select('*');
+        if (tData) tournaments = tData.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date }));
+
+        const { data: mData } = await db.from('matches').select('*');
+        if (mData) matches = mData.map(m => ({ id: m.id, tournamentId: m.tournament_id, date: m.match_date, results: m.results }));
+
+        renderTournaments();
+    } catch (err) {
+        console.error("Error al cargar datos desde Supabase:", err);
+    }
 }
 
 function showTab(tabName) {
@@ -28,14 +48,21 @@ function showTab(tabName) {
     if (tabName === 'partidas') populateMatchTournaments();
 }
 
-function addPlayer() {
+async function addPlayer() {
     const input = document.getElementById('new-player-name');
     const name = input.value.trim();
     if (!name) return alert('Introduce un nombre');
     
-    players.push({ id: Date.now(), name });
+    const newP = { id: Date.now(), name };
+    const { error } = await db.from('players').insert([newP]);
+    
+    if (error) {
+        alert('Error al guardar jugador en la nube: ' + error.message);
+        return;
+    }
+    
+    players.push(newP);
     input.value = '';
-    saveState();
     renderPlayers();
 }
 
@@ -43,10 +70,10 @@ function confirmDelete(message) {
     return confirm(`${message}\n\n¿Estás seguro/a? ¿Vas a eliminarlo? ¿Tienes permiso de tu Admin Edulindo?`);
 }
 
-function deletePlayer(id) {
+async function deletePlayer(id) {
     if (confirmDelete('Vas a eliminar un jugador del sistema.')) {
+        await db.from('players').delete().eq('id', id);
         players = players.filter(p => p.id !== id);
-        saveState();
         renderPlayers();
     }
 }
@@ -61,24 +88,31 @@ function renderPlayers() {
     `).join('');
 }
 
-function createTournament() {
+async function createTournament() {
     const name = document.getElementById('tournament-name').value.trim();
     const start = document.getElementById('tournament-start').value;
     const end = document.getElementById('tournament-end').value;
     
     if (!name) return alert('Introduce el nombre del torneo');
     
-    tournaments.push({ id: Date.now(), name, start, end });
+    const newT = { id: Date.now(), name, start_date: start, end_date: end };
+    const { error } = await db.from('tournaments').insert([newT]);
+    
+    if (error) {
+        alert('Error al guardar el torneo en la nube: ' + error.message);
+        return;
+    }
+    
+    tournaments.push({ id: newT.id, name, start, end });
     document.getElementById('tournament-name').value = '';
-    saveState();
     renderTournaments();
 }
 
-function deleteTournament(id) {
+async function deleteTournament(id) {
     if (confirmDelete('Vas a eliminar un torneo completo con sus registros.')) {
+        await db.from('tournaments').delete().eq('id', id);
         tournaments = tournaments.filter(t => t.id !== id);
         matches = matches.filter(m => m.tournamentId !== id);
-        saveState();
         renderTournaments();
     }
 }
@@ -124,7 +158,7 @@ function renderMatchPlayerInputs() {
     container.innerHTML = html;
 }
 
-function saveMatch() {
+async function saveMatch() {
     const tournamentId = parseInt(document.getElementById('match-tournament').value);
     const date = document.getElementById('match-date').value;
     const num = parseInt(document.getElementById('match-num-players').value);
@@ -141,16 +175,22 @@ function saveMatch() {
         
         selectedPlayers.push(pId);
         
-        // Cálculo automático: Puntos Base x N (Número de jugadores)
         const basePoint = BASE_POINTS[i] !== undefined ? BASE_POINTS[i] : 0;
         const calculatedPoints = basePoint * num;
         
         matchResults.push({ playerId: pId, position: i + 1, score: calculatedPoints });
     }
     
-    matches.push({ id: Date.now(), tournamentId, date, results: matchResults });
-    saveState();
-    alert('Partida registrada correctamente');
+    const newMatch = { id: Date.now(), tournament_id: tournamentId, match_date: date, results: matchResults };
+    const { error } = await db.from('matches').insert([newMatch]);
+    
+    if (error) {
+        alert('Error al guardar la partida en la nube: ' + error.message);
+        return;
+    }
+    
+    matches.push({ id: newMatch.id, tournamentId, date, results: matchResults });
+    alert('Partida registrada correctamente en la nube');
     showTab('torneos');
 }
 
@@ -203,5 +243,6 @@ function viewStandings(tournamentId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadDataFromCloud();
     showTab('torneos');
 });
