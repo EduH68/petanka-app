@@ -1,34 +1,40 @@
 // ==========================================
 // CONFIGURACIÓN DE SUPABASE
 // ==========================================
-const SUPABASE_URL = "https://fkxlxpfglzwihshjcesz.supabase.co"; // Tu URL de la captura
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d2lDW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";             // Pega tu clave anon/public aquí
+const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MD...; 
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Inicialización del cliente
+const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 let players = [];
 let tournaments = [];
 let matches = [];
 let currentTournamentId = null;
 
-// Matriz de puntos base por posición (1º = 10, 2º = 8, etc.)
 const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
 
 // Cargar todos los datos sincronizados desde la nube
 async function loadDataFromCloud() {
+    if (!db) return;
+
     try {
-        const { data: pData } = await db.from('players').select('*');
-        if (pData) players = pData;
+        const { data: pData, error: pErr } = await db.from('players').select('*');
+        if (pErr) console.error("Error al cargar jugadores:", pErr.message);
+        else if (pData) players = pData;
 
-        const { data: tData } = await db.from('tournaments').select('*');
-        if (tData) tournaments = tData.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date }));
+        const { data: tData, error: tErr } = await db.from('tournaments').select('*');
+        if (tErr) console.error("Error al cargar torneos:", tErr.message);
+        else if (tData) tournaments = tData.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date }));
 
-        const { data: mData } = await db.from('matches').select('*');
-        if (mData) matches = mData.map(m => ({ id: m.id, tournamentId: m.tournament_id, date: m.match_date, results: m.results }));
+        const { data: mData, error: mErr } = await db.from('matches').select('*');
+        if (mErr) console.error("Error al cargar partidas:", mErr.message);
+        else if (mData) matches = mData.map(m => ({ id: m.id, tournamentId: m.tournament_id, date: m.match_date, results: m.results }));
 
+        renderPlayers();
         renderTournaments();
     } catch (err) {
-        console.error("Error al cargar datos desde Supabase:", err);
+        console.error("Error general de conexión con Supabase:", err);
     }
 }
 
@@ -37,10 +43,13 @@ function showTab(tabName) {
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     
     if (tabName !== 'clasificacion') {
-        document.getElementById(`sec-${tabName}`).classList.add('active');
-        document.getElementById(`tab-${tabName}`).classList.add('active');
+        const sec = document.getElementById(`sec-${tabName}`);
+        const tab = document.getElementById(`tab-${tabName}`);
+        if (sec) sec.classList.add('active');
+        if (tab) tab.classList.add('active');
     } else {
-        document.getElementById('sec-clasificacion').classList.add('active');
+        const secClas = document.getElementById('sec-clasificacion');
+        if (secClas) secClas.classList.add('active');
     }
     
     if (tabName === 'jugadores') renderPlayers();
@@ -54,11 +63,19 @@ async function addPlayer() {
     if (!name) return alert('Introduce un nombre');
     
     const newP = { id: Date.now(), name };
-    const { error } = await db.from('players').insert([newP]);
     
-    if (error) {
-        alert('Error al guardar jugador en la nube: ' + error.message);
-        return;
+    if (db) {
+        try {
+            const { error } = await db.from('players').insert([newP]);
+            if (error) {
+                alert('Error en Supabase: ' + error.message);
+                return;
+            }
+        } catch (err) {
+            alert('Error al guardar el jugador en la nube.');
+            console.error(err);
+            return;
+        }
     }
     
     players.push(newP);
@@ -71,15 +88,28 @@ function confirmDelete(message) {
 }
 
 async function deletePlayer(id) {
-    if (confirmDelete('Vas a eliminar un jugador del sistema.')) {
-        await db.from('players').delete().eq('id', id);
-        players = players.filter(p => p.id !== id);
-        renderPlayers();
+    if (!confirmDelete('Vas a eliminar un jugador del sistema.')) return;
+
+    if (db) {
+        try {
+            const { error } = await db.from('players').delete().eq('id', id);
+            if (error) {
+                alert('Error al eliminar jugador en la nube: ' + error.message);
+                return;
+            }
+        } catch (err) {
+            alert('Error de conexión al eliminar jugador.');
+            return;
+        }
     }
+
+    players = players.filter(p => p.id !== id);
+    renderPlayers();
 }
 
 function renderPlayers() {
     const container = document.getElementById('players-list');
+    if (!container) return;
     container.innerHTML = players.map(p => `
         <div class="card-item">
             <span><strong>${p.name}</strong></span>
@@ -89,36 +119,58 @@ function renderPlayers() {
 }
 
 async function createTournament() {
-    const name = document.getElementById('tournament-name').value.trim();
+    const nameInput = document.getElementById('tournament-name');
+    const name = nameInput.value.trim();
     const start = document.getElementById('tournament-start').value;
     const end = document.getElementById('tournament-end').value;
     
     if (!name) return alert('Introduce el nombre del torneo');
     
     const newT = { id: Date.now(), name, start_date: start, end_date: end };
-    const { error } = await db.from('tournaments').insert([newT]);
     
-    if (error) {
-        alert('Error al guardar el torneo en la nube: ' + error.message);
-        return;
+    if (db) {
+        try {
+            const { error } = await db.from('tournaments').insert([newT]);
+            if (error) {
+                alert('Error en Supabase: ' + error.message);
+                return;
+            }
+        } catch (err) {
+            alert('Error al guardar torneo en la nube.');
+            console.error(err);
+            return;
+        }
     }
-    
+
     tournaments.push({ id: newT.id, name, start, end });
-    document.getElementById('tournament-name').value = '';
+    nameInput.value = '';
     renderTournaments();
 }
 
 async function deleteTournament(id) {
-    if (confirmDelete('Vas a eliminar un torneo completo con sus registros.')) {
-        await db.from('tournaments').delete().eq('id', id);
-        tournaments = tournaments.filter(t => t.id !== id);
-        matches = matches.filter(m => m.tournamentId !== id);
-        renderTournaments();
+    if (!confirmDelete('Vas a eliminar un torneo completo con sus registros.')) return;
+
+    if (db) {
+        try {
+            const { error } = await db.from('tournaments').delete().eq('id', id);
+            if (error) {
+                alert('Error al eliminar torneo en la nube: ' + error.message);
+                return;
+            }
+        } catch (err) {
+            alert('Error de conexión al eliminar torneo.');
+            return;
+        }
     }
+
+    tournaments = tournaments.filter(t => t.id !== id);
+    matches = matches.filter(m => m.tournamentId !== id);
+    renderTournaments();
 }
 
 function renderTournaments() {
     const container = document.getElementById('tournaments-list');
+    if (!container) return;
     container.innerHTML = tournaments.map(t => `
         <div class="card-item">
             <div>
@@ -135,12 +187,15 @@ function renderTournaments() {
 
 function populateMatchTournaments() {
     const select = document.getElementById('match-tournament');
+    if (!select) return;
     select.innerHTML = tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     renderMatchPlayerInputs();
 }
 
 function renderMatchPlayerInputs() {
-    const num = parseInt(document.getElementById('match-num-players').value);
+    const numEl = document.getElementById('match-num-players');
+    if (!numEl) return;
+    const num = parseInt(numEl.value);
     const container = document.getElementById('match-players-container');
     let html = '<p style="margin: 10px 0 5px 0; font-weight: bold;">Selecciona jugadores y sus posiciones:</p>';
     
@@ -159,18 +214,21 @@ function renderMatchPlayerInputs() {
 }
 
 async function saveMatch() {
-    const tournamentId = parseInt(document.getElementById('match-tournament').value);
+    const tSelect = document.getElementById('match-tournament');
+    if (!tSelect || !tSelect.value) return alert('Selecciona un torneo');
+    
+    const tournamentId = parseInt(tSelect.value);
     const date = document.getElementById('match-date').value;
     const num = parseInt(document.getElementById('match-num-players').value);
-    
-    if (!tournamentId) return alert('Selecciona un torneo');
     
     let selectedPlayers = [];
     let matchResults = [];
     
     for (let i = 0; i < num; i++) {
-        const pId = parseInt(document.getElementById(`match-player-pos-${i}`).value);
-        if (!pId) return alert(`Selecciona el jugador para la posición ${i + 1}º`);
+        const pSelect = document.getElementById(`match-player-pos-${i}`);
+        if (!pSelect || !pSelect.value) return alert(`Selecciona el jugador para la posición ${i + 1}º`);
+        const pId = parseInt(pSelect.value);
+        
         if (selectedPlayers.includes(pId)) return alert('Un mismo jugador no puede ocupar dos posiciones distintas.');
         
         selectedPlayers.push(pId);
@@ -182,15 +240,22 @@ async function saveMatch() {
     }
     
     const newMatch = { id: Date.now(), tournament_id: tournamentId, match_date: date, results: matchResults };
-    const { error } = await db.from('matches').insert([newMatch]);
-    
-    if (error) {
-        alert('Error al guardar la partida en la nube: ' + error.message);
-        return;
+
+    if (db) {
+        try {
+            const { error } = await db.from('matches').insert([newMatch]);
+            if (error) {
+                alert('Error al registrar la partida en la nube: ' + error.message);
+                return;
+            }
+        } catch (err) {
+            alert('Error de conexión al registrar partida.');
+            return;
+        }
     }
-    
+
     matches.push({ id: newMatch.id, tournamentId, date, results: matchResults });
-    alert('Partida registrada correctamente en la nube');
+    alert('Partida registrada correctamente');
     showTab('torneos');
 }
 
@@ -242,7 +307,7 @@ function viewStandings(tournamentId) {
     showTab('clasificacion');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {
     loadDataFromCloud();
     showTab('torneos');
 });
