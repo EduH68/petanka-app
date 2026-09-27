@@ -1,7 +1,7 @@
 // ==========================================
 // CONFIGURACIÓN DE SUPABASE
 // ==========================================
-const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.com"; // Tu URL de la captura
+const SUPABASE_URL = "https://fkxlxpfglzwihshjcesz.supabase.co/rest/v1/"; // Tu URL de la captura
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d2lDW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";             // Pega tu clave anon/public aquí
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
