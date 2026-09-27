@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Petanka Txapelketak - Cloud</title>
+    <title>Petanka Txapelketak</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,63 +12,56 @@
             <h1>Petanka Txapelketak</h1>
         </header>
 
-        <!-- Bloque de verificación de licencia/acceso -->
-        <div id="license-block" class="card-item">
-            <label for="license-key">Clave de Licencia Gumroad:</label>
-            <input type="text" id="license-key" placeholder="Introduce tu clave de licencia">
-            <button class="btn-primary" onclick="verifyLicense()">Validar Licencia</button>
-            <p id="license-status"></p>
+        <nav>
+            <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
+            <button id="tab-partidas" onclick="showTab('partidas')">Partidas</button>
+            <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
+        </nav>
+
+        <div id="sec-jugadores" class="section">
+            <h2>Gestión de Jugadores</h2>
+            <div class="form-group">
+                <input type="text" id="new-player-name" placeholder="Nombre del jugador">
+                <button class="btn-primary" onclick="addPlayer()">Guardar Jugador</button>
+            </div>
+            <div id="players-list"></div>
         </div>
 
-        <!-- Contenido principal de la App (Protegido) -->
-        <div id="app-content" style="display:none;">
-            <nav>
-                <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
-                <button id="tab-partidas" onclick="showTab('partidas')">Partidas</button>
-                <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
-            </nav>
-
-            <div id="sec-jugadores" class="section">
-                <h2>Gestión de Jugadores</h2>
-                <div class="form-group">
-                    <input type="text" id="new-player-name" placeholder="Nombre del jugador">
-                    <button class="btn-primary" onclick="addPlayer()">Guardar Jugador</button>
-                </div>
-                <div id="players-list"></div>
+        <div id="sec-torneos" class="section active">
+            <h2>Torneos</h2>
+            <div class="form-group">
+                <input type="text" id="tournament-name" placeholder="Ej: Uda Txapelketa 2026">
+                <input type="datetime-local" id="tournament-start">
+                <input type="datetime-local" id="tournament-end">
+                <button class="btn-primary" onclick="createTournament()">Crear Torneo</button>
             </div>
+            <div id="tournaments-list"></div>
+        </div>
 
-            <div id="sec-torneos" class="section active">
-                <h2>Torneos</h2>
-                <div class="form-group">
-                    <input type="text" id="tournament-name" placeholder="Ej: Uda Txapelketa 2026">
-                    <input type="datetime-local" id="tournament-start">
-                    <input type="datetime-local" id="tournament-end">
-                    <button class="btn-primary" onclick="createTournament()">Crear Torneo</button>
-                </div>
-                <div id="tournaments-list"></div>
+        <div id="sec-partidas" class="section">
+            <h2>Registrar Partida</h2>
+            <div class="form-group">
+                <select id="match-tournament"></select>
+                <input type="datetime-local" id="match-date">
+                <select id="match-num-players" onchange="renderMatchPlayerInputs()">
+                    <option value="2">2 Jugadores</option>
+                    <option value="3">3 Jugadores</option>
+                    <option value="4" selected>4 Jugadores</option>
+                    <option value="5">5 Jugadores</option>
+                    <option value="6">6 Jugadores</option>
+                    <option value="7">7 Jugadores</option>
+                    <option value="8">8 Jugadores</option>
+                </select>
+                <div id="match-players-container"></div>
+                <button class="btn-primary" onclick="saveMatch()">Guardar Partida</button>
             </div>
+        </div>
 
-            <div id="sec-partidas" class="section">
-                <h2>Registrar Partida</h2>
-                <div class="form-group">
-                    <select id="match-tournament"></select>
-                    <input type="datetime-local" id="match-date">
-                    <select id="match-num-players" onchange="renderMatchPlayerInputs()">
-                        <option value="2">2</option><option value="3">3</option>
-                        <option value="4" selected>4</option><option value="5">5</option>
-                        <option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                    </select>
-                    <div id="match-players-container"></div>
-                    <button class="btn-primary" onclick="saveMatch()">Guardar Partida</button>
-                </div>
-            </div>
-
-            <div id="sec-clasificacion" class="section">
-                <button onclick="showTab('torneos')">← Volver a Torneos</button>
-                <h2 id="clasificacion-title">Clasificación</h2>
-                <div id="clasificacion-table-container"></div>
-                <div id="partidas-historial-container"></div>
-            </div>
+        <div id="sec-clasificacion" class="section">
+            <button class="btn-secondary" onclick="showTab('torneos')">← Volver a Torneos</button>
+            <h2 id="clasificacion-title">Clasificación</h2>
+            <div id="clasificacion-table-container"></div>
+            <div id="partidas-historial-container"></div>
         </div>
     </div>
     <script src="app.js"></script>

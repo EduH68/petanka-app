@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --primary: #1b5e20;
     --primary-light: #4c8c4a;
     --bg: #f4f6f8;
@@ -72,6 +72,15 @@ button.btn-primary {
     color: white;
     font-weight: bold;
     border: none;
+    cursor: pointer;
+}
+
+button.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
 }
 
 button.btn-danger {
@@ -79,8 +88,8 @@ button.btn-danger {
     color: white;
     font-weight: bold;
     border: none;
-    width: auto;
     padding: 6px 10px;
+    cursor: pointer;
 }
 
 .card-item {
@@ -94,7 +103,20 @@ button.btn-danger {
     align-items: center;
 }
 
-/* Adaptación para pantallas de tablets y móviles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+th { background-color: #f2f2f2; }
+
 @media (max-width: 600px) {
     body { padding: 6px; }
     .container { padding: 12px; }
