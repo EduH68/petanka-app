@@ -3,6 +3,9 @@ let tournaments = JSON.parse(localStorage.getItem('petanka_tournaments')) || [];
 let matches = JSON.parse(localStorage.getItem('petanka_matches')) || [];
 let currentTournamentId = null;
 
+// Matriz de puntos base según la posición (Índice 0 = 1º Lugar)
+const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
+
 function saveState() {
     localStorage.setItem('petanka_players', JSON.stringify(players));
     localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
@@ -105,16 +108,16 @@ function populateMatchTournaments() {
 function renderMatchPlayerInputs() {
     const num = parseInt(document.getElementById('match-num-players').value);
     const container = document.getElementById('match-players-container');
-    let html = '';
+    let html = '<p style="margin: 10px 0 5px 0; font-weight: bold;">Selecciona jugadores y sus posiciones:</p>';
     
     for (let i = 0; i < num; i++) {
         html += `
-            <div class="card-item" style="margin-bottom:4px;">
-                <select id="match-player-${i}">
-                    <option value="">-- Seleccionar Jugador ${i+1} --</option>
+            <div class="card-item" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+                <span style="font-weight:bold; min-width:70px;">${i + 1}º Lugar:</span>
+                <select id="match-player-pos-${i}" style="margin:0;">
+                    <option value="">-- Seleccionar Jugador --</option>
                     ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
                 </select>
-                <input type="number" id="match-score-${i}" placeholder="Puntos" style="width:80px; margin:0;">
             </div>
         `;
     }
@@ -128,15 +131,24 @@ function saveMatch() {
     
     if (!tournamentId) return alert('Selecciona un torneo');
     
-    let matchPlayers = [];
+    let selectedPlayers = [];
+    let matchResults = [];
+    
     for (let i = 0; i < num; i++) {
-        const pId = parseInt(document.getElementById(`match-player-${i}`).value);
-        const score = parseInt(document.getElementById(`match-score-${i}`).value) || 0;
-        if (!pId) return alert(`Selecciona al jugador ${i+1}`);
-        matchPlayers.push({ playerId: pId, score });
+        const pId = parseInt(document.getElementById(`match-player-pos-${i}`).value);
+        if (!pId) return alert(`Selecciona el jugador para la posición ${i + 1}º`);
+        if (selectedPlayers.includes(pId)) return alert('Un mismo jugador no puede ocupar dos posiciones distintas.');
+        
+        selectedPlayers.push(pId);
+        
+        // Cálculo automático: Puntos Base x N (Número de jugadores)
+        const basePoint = BASE_POINTS[i] !== undefined ? BASE_POINTS[i] : 0;
+        const calculatedPoints = basePoint * num;
+        
+        matchResults.push({ playerId: pId, position: i + 1, score: calculatedPoints });
     }
     
-    matches.push({ id: Date.now(), tournamentId, date, results: matchPlayers });
+    matches.push({ id: Date.now(), tournamentId, date, results: matchResults });
     saveState();
     alert('Partida registrada correctamente');
     showTab('torneos');
