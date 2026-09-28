@@ -102,7 +102,6 @@
     </div>
 
     <script>
-        // URL CORREGIDA DE TU PROYECTO
         const SUPABASE_URL = "https://fkxlxpfglzwihshjcesz.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d2lDW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";
 
@@ -196,7 +195,7 @@
             const client = getDbClient();
             if (client) {
                 try {
-                    const { error } = await client.from('players').insert([{ name: name }]);
+                    const { error } = await client.from('players').insert({ name: name });
                     if (error) throw error;
                     alert('Jugador guardado con éxito.');
                     input.value = '';
@@ -244,11 +243,11 @@
             const client = getDbClient();
             if (client) {
                 try {
-                    const { error } = await client.from('tournaments').insert([{
-                        name: name,
-                        start_date: start || null,
-                        end_date: end || null
-                    }]);
+                    const payload = { name: name };
+                    if (start) payload.start_date = start;
+                    if (end) payload.end_date = end;
+
+                    const { error } = await client.from('tournaments').insert(payload);
                     if (error) throw error;
                     alert('Torneo creado correctamente.');
                     nameInput.value = '';
@@ -352,11 +351,13 @@
             const client = getDbClient();
             if (client) {
                 try {
-                    const { error } = await client.from('matches').insert([{
+                    const payload = {
                         tournament_id: tournamentId,
-                        match_date: date || null,
                         results: matchResults
-                    }]);
+                    };
+                    if (date) payload.match_date = date;
+
+                    const { error } = await client.from('matches').insert(payload);
 
                     if (error) throw error;
 
