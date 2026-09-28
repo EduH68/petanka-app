@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Petanka Txapelketak - v12.32h</title>
+    <title>Petanka Txapelketak</title>
     <!-- Librería oficial de Supabase v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Script Oficial de Lemon Squeezy Overlay -->
+    <script src="https://assets.lemonsqueezy.com/lemon.js" defer></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; color: #333; }
-        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         header h1 { margin: 0; font-size: 1.4rem; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
         .btn-refresh { background-color: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
         .btn-refresh:hover { background-color: #138496; }
+        .btn-lemon { background-color: #ffc107; color: #000; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 0.9rem; }
+        .btn-lemon:hover { background-color: #e0a800; }
         #status-bar { padding: 10px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; margin-bottom: 15px; text-align: center; background: #fff3cd; color: #856404; }
         nav { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
         nav button { flex: 1; padding: 12px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem; color: #495057; }
@@ -27,16 +32,30 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
         th { background-color: #f2f2f2; }
+        .license-box { background: #e2e3e5; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #d6d8db; }
     </style>
 </head>
 <body>
 
     <header>
         <h1>Petanka Txapelketak</h1>
-        <button class="btn-refresh" onclick="manualRefresh()">🔄 Actualizar Datos</button>
+        <div class="header-actions">
+            <a id="buy-license-btn" class="btn-lemon lemony-squeezy-button" href="https://encodigo.lemonsqueezy.com/checkout/buy/2d3becc6-489c-4b06-a6c1-11f718d99aa9">🍋 Comprar Licencia</a>
+            <button class="btn-refresh" onclick="manualRefresh()">🔄 Actualizar Datos</button>
+        </div>
     </header>
 
     <div id="status-bar">Conectando con Supabase...</div>
+
+    <!-- CONTROL DE LICENCIA LEMON SQUEEZY -->
+    <div class="license-box">
+        <label for="license-key-input">🔑 Clave de Licencia Lemon Squeezy:</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="license-key-input" placeholder="Introduce tu clave de licencia" style="margin:0;">
+            <button class="btn-primary" style="white-space:nowrap;" onclick="verifyLemonLicense()">Validar Licencia</button>
+        </div>
+        <small id="license-status-msg" style="display:block; margin-top:5px; font-weight:bold;"></small>
+    </div>
 
     <nav>
         <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
@@ -134,6 +153,53 @@
         async function manualRefresh() {
             setStatus("Actualizando datos...");
             await loadDataFromCloud();
+        }
+
+        async function verifyLemonLicense() {
+            const keyInput = document.getElementById('license-key-input');
+            const statusMsg = document.getElementById('license-status-msg');
+            const licenseKey = keyInput.value.trim();
+
+            if (!licenseKey) {
+                statusMsg.style.color = 'red';
+                statusMsg.innerText = 'Por favor, introduce una clave válida.';
+                return;
+            }
+
+            statusMsg.style.color = 'blue';
+            statusMsg.innerText = 'Verificando licencia con Lemon Squeezy...';
+
+            try {
+                const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ license_key: licenseKey })
+                });
+
+                const data = await response.json();
+
+                if (data.valid) {
+                    const expiresAt = data.license_key.expires_at ? new Date(data.license_key.expires_at).toLocaleDateString() : 'Activa (Sin fecha límite)';
+                    statusMsg.style.color = 'green';
+                    statusMsg.innerText = `✅ Licencia válida. Caducidad: ${expiresAt}`;
+                    localStorage.setItem('petanka_lemon_key', licenseKey);
+                } else {
+                    statusMsg.style.color = 'red';
+                    statusMsg.innerText = `❌ Licencia inválida: ${data.error || 'Expirada o no existente'}`;
+                }
+            } catch (err) {
+                console.error(err);
+                statusMsg.style.color = 'red';
+                statusMsg.innerText = 'Error al verificar la licencia con Lemon Squeezy.';
+            }
+        }
+
+        function checkSavedLicense() {
+            const savedKey = localStorage.getItem('petanka_lemon_key');
+            if (savedKey) {
+                document.getElementById('license-key-input').value = savedKey;
+                verifyLemonLicense();
+            }
         }
 
         function showTab(tabName) {
@@ -335,7 +401,6 @@
             updatePlayerDropdowns();
         }
 
-        // Filtra los despegables para deshabilitar jugadores ya elegidos en otras posiciones
         function updatePlayerDropdowns() {
             const selects = Array.from(document.querySelectorAll('.match-player-select'));
             const selectedValues = selects.map(s => s.value).filter(val => val !== "");
@@ -344,7 +409,6 @@
                 const currentVal = currentSelect.value;
                 Array.from(currentSelect.options).forEach(option => {
                     if (option.value === "") return;
-                    // Deshabilitar la opción si está seleccionada en otro desplegable
                     if (selectedValues.includes(option.value) && option.value !== currentVal) {
                         option.disabled = true;
                     } else {
@@ -452,6 +516,7 @@
 
         window.addEventListener('DOMContentLoaded', async () => {
             getDbClient();
+            checkSavedLicense();
             await loadDataFromCloud();
         });
     </script>
