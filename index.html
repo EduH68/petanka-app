@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petanka Txapelketak</title>
-    <!-- Carga sincrónica del SDK oficial de Supabase -->
+    <!-- Librería oficial de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; color: #333; }
-        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 15px; }
+        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 10px; }
+        #status-bar { padding: 10px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; margin-bottom: 15px; text-align: center; background: #fff3cd; color: #856404; }
         nav { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
         nav button { flex: 1; padding: 12px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem; color: #495057; }
         nav button.active { background: #007bff; color: white; }
@@ -17,9 +18,7 @@
         .section.active { display: block; }
         .card-item { background: #fff; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 4px; }
         .btn-primary { background-color: #28a745; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-primary:hover { background-color: #218838; }
         .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-        .btn-danger:hover { background-color: #c82333; }
         input, select { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
         label { font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -32,6 +31,9 @@
     <header>
         <h1 style="margin:0; font-size: 1.6rem;">Petanka Txapelketak</h1>
     </header>
+
+    <!-- BARRA DE ESTADO DE CONEXIÓN -->
+    <div id="status-bar">Comprobando conexión con la base de datos...</div>
 
     <!-- NAVEGACIÓN PRINCIPAL -->
     <nav>
@@ -102,7 +104,6 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE CONEXIÓN A SUPABASE
         const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MDM4MTU3MzAsImV4cCI6MjAxOTM5MTzczMH0.H5d21DW6KBAvfZA7NcIpSgBi12oM1mAbo_S_78yIakI";
 
@@ -112,7 +113,15 @@
         let matches = [];
         const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
 
-        // Garantizar inicialización del cliente Supabase
+        function setStatus(msg, isError = false) {
+            const bar = document.getElementById('status-bar');
+            if (bar) {
+                bar.innerText = msg;
+                bar.style.background = isError ? '#f8d7da' : '#d4edda';
+                bar.style.color = isError ? '#721c24' : '#155724';
+            }
+        }
+
         function getDbClient() {
             if (!db && window.supabase) {
                 db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -120,7 +129,6 @@
             return db;
         }
 
-        // Navegación de pestañas
         function showTab(tabName) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
@@ -140,52 +148,46 @@
             if (tabName === 'partidas') populateMatchTournaments();
         }
 
-        // Carga de datos desde Supabase
         async function loadDataFromCloud() {
             const client = getDbClient();
             if (!client) {
-                console.error("No se pudo conectar a la base de datos de Supabase.");
+                setStatus("Error: La librería de Supabase no se ha podido cargar.", true);
                 return;
             }
 
             try {
-                // Obtener jugadores
                 const { data: pData, error: pErr } = await client.from('players').select('*').order('name', { ascending: true });
-                if (pErr) console.error("Error al cargar jugadores:", pErr.message);
-                else players = pData || [];
+                if (pErr) throw pErr;
+                players = pData || [];
 
-                // Obtener torneos
                 const { data: tData, error: tErr } = await client.from('tournaments').select('*').order('id', { ascending: false });
-                if (tErr) console.error("Error al cargar torneos:", tErr.message);
-                else {
-                    tournaments = (tData || []).map(t => ({
-                        id: t.id,
-                        name: t.name,
-                        start: t.start_date || t.start,
-                        end: t.end_date || t.end
-                    }));
-                }
+                if (tErr) throw tErr;
+                tournaments = (tData || []).map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    start: t.start_date || t.start,
+                    end: t.end_date || t.end
+                }));
 
-                // Obtener partidas
                 const { data: mData, error: mErr } = await client.from('matches').select('*');
-                if (mErr) console.error("Error al cargar partidas:", mErr.message);
-                else {
-                    matches = (mData || []).map(m => ({
-                        id: m.id,
-                        tournamentId: m.tournament_id || m.tournamentId,
-                        date: m.match_date || m.date,
-                        results: m.results
-                    }));
-                }
+                if (mErr) throw mErr;
+                matches = (mData || []).map(m => ({
+                    id: m.id,
+                    tournamentId: m.tournament_id || m.tournamentId,
+                    date: m.match_date || m.date,
+                    results: m.results
+                }));
+
+                setStatus("Conectado con éxito a la nube.");
             } catch (e) {
-                console.error("Excepción en conexión:", e);
+                console.error("Error de red:", e);
+                setStatus("Error de conexión ('Failed to fetch'): Comprueba bloqueadores de red/VPN o refresca la página.", true);
             }
 
             renderPlayers();
             renderTournaments();
         }
 
-        // --- GESTIÓN DE JUGADORES ---
         async function addPlayer() {
             const input = document.getElementById('new-player-name');
             if (!input) return;
@@ -194,11 +196,15 @@
 
             const client = getDbClient();
             if (client) {
-                const { error } = await client.from('players').insert([{ name: name }]);
-                if (error) return alert('Error al guardar jugador: ' + error.message);
-                alert('Jugador guardado con éxito.');
-                input.value = '';
-                await loadDataFromCloud();
+                try {
+                    const { error } = await client.from('players').insert([{ name: name }]);
+                    if (error) throw error;
+                    alert('Jugador guardado con éxito.');
+                    input.value = '';
+                    await loadDataFromCloud();
+                } catch (err) {
+                    alert('Error al guardar: ' + err.message);
+                }
             }
         }
 
@@ -227,7 +233,6 @@
             `).join('');
         }
 
-        // --- GESTIÓN DE TORNEOS ---
         async function createTournament() {
             const nameInput = document.getElementById('tournament-name');
             if (!nameInput) return;
@@ -239,19 +244,21 @@
 
             const client = getDbClient();
             if (client) {
-                const { error } = await client.from('tournaments').insert([{
-                    name: name,
-                    start_date: start || null,
-                    end_date: end || null
-                }]);
-
-                if (error) return alert('Error al crear torneo: ' + error.message);
-
-                alert('Torneo creado correctamente.');
-                nameInput.value = '';
-                document.getElementById('tournament-start').value = '';
-                document.getElementById('tournament-end').value = '';
-                await loadDataFromCloud();
+                try {
+                    const { error } = await client.from('tournaments').insert([{
+                        name: name,
+                        start_date: start || null,
+                        end_date: end || null
+                    }]);
+                    if (error) throw error;
+                    alert('Torneo creado correctamente.');
+                    nameInput.value = '';
+                    document.getElementById('tournament-start').value = '';
+                    document.getElementById('tournament-end').value = '';
+                    await loadDataFromCloud();
+                } catch (err) {
+                    alert('Error al guardar torneo: ' + err.message);
+                }
             }
         }
 
@@ -286,7 +293,6 @@
             `).join('');
         }
 
-        // --- GESTIÓN DE PARTIDAS Y CLASIFICACIÓN ---
         function populateMatchTournaments() {
             const select = document.getElementById('match-tournament');
             if (!select) return;
@@ -311,7 +317,7 @@
                 html += `
                     <div class="card-item" style="display:flex; align-items:center; gap:8px;">
                         <span style="font-weight:bold; min-width:70px;">${i + 1}º Lugar:</span>
-                        <select id="match-player-pos-${i}" class="match-player-select">
+                        <select id="match-player-pos-${i}">
                             <option value="">-- Seleccionar Jugador --</option>
                             ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
                         </select>
@@ -337,7 +343,7 @@
                 if (!pSelect || !pSelect.value) return alert(`Selecciona el jugador para la posición ${i + 1}º.`);
                 const pId = parseInt(pSelect.value);
 
-                if (selectedPlayers.includes(pId)) return alert('No puedes repetir el mismo jugador en varias posiciones.');
+                if (selectedPlayers.includes(pId)) return alert('No puedes repetir el mismo jugador.');
                 selectedPlayers.push(pId);
 
                 const basePoint = BASE_POINTS[i] !== undefined ? BASE_POINTS[i] : 0;
@@ -346,17 +352,21 @@
 
             const client = getDbClient();
             if (client) {
-                const { error } = await client.from('matches').insert([{
-                    tournament_id: tournamentId,
-                    match_date: date || null,
-                    results: matchResults
-                }]);
+                try {
+                    const { error } = await client.from('matches').insert([{
+                        tournament_id: tournamentId,
+                        match_date: date || null,
+                        results: matchResults
+                    }]);
 
-                if (error) return alert('Error al registrar la partida: ' + error.message);
+                    if (error) throw error;
 
-                alert('Partida registrada correctamente.');
-                await loadDataFromCloud();
-                showTab('torneos');
+                    alert('Partida registrada correctamente.');
+                    await loadDataFromCloud();
+                    showTab('torneos');
+                } catch (err) {
+                    alert('Error al registrar la partida: ' + err.message);
+                }
             }
         }
 
@@ -411,7 +421,6 @@
             showTab('clasificacion');
         }
 
-        // Inicializar al cargar la página
         window.addEventListener('DOMContentLoaded', async () => {
             getDbClient();
             await loadDataFromCloud();
