@@ -9,42 +9,37 @@ const db = (typeof supabase !== 'undefined' && supabase.createClient)
     ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) 
     : null;
 
-let players = JSON.parse(localStorage.getItem('petanka_players')) || [];
-let tournaments = JSON.parse(localStorage.getItem('petanka_tournaments')) || [];
-let matches = JSON.parse(localStorage.getItem('petanka_matches')) || [];
+let players = [];
+let tournaments = [];
+let matches = [];
 let currentTournamentId = null;
 
 const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
 
 // Cargar datos sincronizados desde Supabase
 async function loadDataFromCloud() {
-    if (!db) return;
+    if (!db) {
+        alert("Error: No se pudo cargar la librería de Supabase.");
+        return;
+    }
 
     try {
-        const { data: pData } = await db.from('players').select('*');
-        if (pData && pData.length > 0) {
-            players = pData;
-            localStorage.setItem('petanka_players', JSON.stringify(players));
-        }
+        const { data: pData, error: pErr } = await db.from('players').select('*');
+        if (pErr) console.error("Error jugadores:", pErr.message);
+        else if (pData) players = pData;
 
-        const { data: tData } = await db.from('tournaments').select('*');
-        if (tData && tData.length > 0) {
-            tournaments = tData.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date }));
-            localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
-        }
+        const { data: tData, error: tErr } = await db.from('tournaments').select('*');
+        if (tErr) console.error("Error torneos:", tErr.message);
+        else if (tData) tournaments = tData.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date }));
 
-        const { data: mData } = await db.from('matches').select('*');
-        if (mData && mData.length > 0) {
-            matches = mData.map(m => ({ id: m.id, tournamentId: m.tournament_id, date: m.match_date, results: m.results }));
-            localStorage.setItem('petanka_matches', JSON.stringify(matches));
-        }
+        const { data: mData, error: mErr } = await db.from('matches').select('*');
+        if (mErr) console.error("Error partidas:", mErr.message);
+        else if (mData) matches = mData.map(m => ({ id: m.id, tournamentId: m.tournament_id, date: m.match_date, results: m.results }));
 
         renderPlayers();
         renderTournaments();
     } catch (err) {
-        console.warn("Conectado en modo offline/almacenamiento local.");
-        renderPlayers();
-        renderTournaments();
+        alert("Error de conexión al cargar datos de la nube: " + err.message);
     }
 }
 
@@ -73,18 +68,21 @@ async function addPlayer() {
     if (!name) return alert('Introduce un nombre');
     
     const newP = { id: Date.now(), name };
-    
-    players.push(newP);
-    localStorage.setItem('petanka_players', JSON.stringify(players));
-    input.value = '';
-    renderPlayers();
 
-    if (db) {
-        try {
-            await db.from('players').insert([newP]);
-        } catch (err) {
-            console.warn("No se pudo sincronizar en la nube, guardado localmente.");
+    if (!db) return alert("Cliente de nube no inicializado.");
+
+    try {
+        const { error } = await db.from('players').insert([newP]);
+        if (error) {
+            alert('Error al guardar en Supabase: ' + error.message);
+            return;
         }
+        players.push(newP);
+        input.value = '';
+        renderPlayers();
+        alert('Jugador guardado en la nube correctamente');
+    } catch (err) {
+        alert('Fallo de red al intentar guardar el jugador.');
     }
 }
 
@@ -95,16 +93,18 @@ function confirmDelete(message) {
 async function deletePlayer(id) {
     if (!confirmDelete('Vas a eliminar un jugador del sistema.')) return;
 
-    players = players.filter(p => p.id !== id);
-    localStorage.setItem('petanka_players', JSON.stringify(players));
-    renderPlayers();
+    if (!db) return alert("Cliente de nube no inicializado.");
 
-    if (db) {
-        try {
-            await db.from('players').delete().eq('id', id);
-        } catch (err) {
-            console.warn("Eliminado localmente.");
+    try {
+        const { error } = await db.from('players').delete().eq('id', id);
+        if (error) {
+            alert('Error al eliminar en Supabase: ' + error.message);
+            return;
         }
+        players = players.filter(p => p.id !== id);
+        renderPlayers();
+    } catch (err) {
+        alert('Fallo de red al eliminar jugador.');
     }
 }
 
@@ -128,36 +128,40 @@ async function createTournament() {
     if (!name) return alert('Introduce el nombre del torneo');
     
     const newT = { id: Date.now(), name, start_date: start, end_date: end };
-    
-    tournaments.push({ id: newT.id, name, start, end });
-    localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
-    nameInput.value = '';
-    renderTournaments();
 
-    if (db) {
-        try {
-            await db.from('tournaments').insert([newT]);
-        } catch (err) {
-            console.warn("Torneo guardado localmente.");
+    if (!db) return alert("Cliente de nube no inicializado.");
+
+    try {
+        const { error } = await db.from('tournaments').insert([newT]);
+        if (error) {
+            alert('Error al guardar torneo en Supabase: ' + error.message);
+            return;
         }
+        tournaments.push({ id: newT.id, name, start, end });
+        nameInput.value = '';
+        renderTournaments();
+        alert('Torneo guardado en la nube correctamente');
+    } catch (err) {
+        alert('Fallo de red al crear torneo.');
     }
 }
 
 async function deleteTournament(id) {
     if (!confirmDelete('Vas a eliminar un torneo completo con sus registros.')) return;
 
-    tournaments = tournaments.filter(t => t.id !== id);
-    matches = matches.filter(m => m.tournamentId !== id);
-    localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
-    localStorage.setItem('petanka_matches', JSON.stringify(matches));
-    renderTournaments();
+    if (!db) return alert("Cliente de nube no inicializado.");
 
-    if (db) {
-        try {
-            await db.from('tournaments').delete().eq('id', id);
-        } catch (err) {
-            console.warn("Torneo eliminado localmente.");
+    try {
+        const { error } = await db.from('tournaments').delete().eq('id', id);
+        if (error) {
+            alert('Error al eliminar torneo en Supabase: ' + error.message);
+            return;
         }
+        tournaments = tournaments.filter(t => t.id !== id);
+        matches = matches.filter(m => m.tournamentId !== id);
+        renderTournaments();
+    } catch (err) {
+        alert('Fallo de red al eliminar torneo.');
     }
 }
 
@@ -207,7 +211,6 @@ function renderMatchPlayerInputs() {
     updatePlayerOptions();
 }
 
-// Deshabilita en los desplegables los jugadores ya seleccionados en otros lugares
 function updatePlayerOptions() {
     const selects = Array.from(document.querySelectorAll('.match-player-select'));
     const selectedValues = selects.map(s => s.value).filter(val => val !== "");
@@ -247,24 +250,21 @@ async function saveMatch() {
         matchResults.push({ playerId: pId, position: i + 1, score: calculatedPoints });
     }
     
-    const newMatch = { id: Date.now(), tournamentId, date, results: matchResults };
-    matches.push(newMatch);
-    localStorage.setItem('petanka_matches', JSON.stringify(matches));
+    const newMatch = { id: Date.now(), tournament_id: tournamentId, match_date: date, results: matchResults };
 
-    alert('Partida registrada correctamente');
-    showTab('torneos');
+    if (!db) return alert("Cliente de nube no inicializado.");
 
-    if (db) {
-        try {
-            await db.from('matches').insert([{
-                id: newMatch.id,
-                tournament_id: tournamentId,
-                match_date: date,
-                results: matchResults
-            }]);
-        } catch (err) {
-            console.warn("Partida guardada localmente.");
+    try {
+        const { error } = await db.from('matches').insert([newMatch]);
+        if (error) {
+            alert('Error al registrar la partida en la nube: ' + error.message);
+            return;
         }
+        matches.push({ id: newMatch.id, tournamentId, date, results: matchResults });
+        alert('Partida registrada correctamente en la nube');
+        showTab('torneos');
+    } catch (err) {
+        alert('Fallo de red al registrar partida.');
     }
 }
 
