@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petanka Txapelketak</title>
-    <!-- Carga del CDN de Supabase v2 -->
+    <!-- Librería oficial de Supabase v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
@@ -102,7 +102,8 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
+        // URL CORREGIDA DE TU PROYECTO
+        const SUPABASE_URL = "https://fkxlxpfglzwihshjcesz.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d21DW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";
 
         let db = null;
@@ -179,7 +180,7 @@
                 setStatus("Conectado con éxito a Supabase.");
             } catch (e) {
                 console.error(e);
-                setStatus("Error de red/CORS ('Failed to fetch'). Verifica si tienes bloqueador de anuncios, VPN o RLS activado en Supabase.", true);
+                setStatus("Error de conexión: " + e.message, true);
             }
 
             renderPlayers();
