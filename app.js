@@ -4,43 +4,63 @@
 const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MDM4MTU3MzAsImV4cCI6MjAxOTM5MTzczMH0.H5d21DW6KBAvfZA7NcIpSgBi12oM1mAbo_S_78yIakI"; 
 
-// Inicialización del cliente de Supabase
-const db = (typeof supabase !== 'undefined' && supabase.createClient) 
-    ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) 
-    : null;
+// Inicialización segura de Supabase
+let db = null;
+try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } else if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+        db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+} catch (e) {
+    console.warn("No se pudo iniciar el cliente de Supabase:", e);
+}
 
-let players = [];
-let tournaments = [];
-let matches = [];
+// Almacenamiento global con respaldo en LocalStorage
+let players = JSON.parse(localStorage.getItem('petanka_players')) || [];
+let tournaments = JSON.parse(localStorage.getItem('petanka_tournaments')) || [];
+let matches = JSON.parse(localStorage.getItem('petanka_matches')) || [];
 let currentTournamentId = null;
 
 const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
 
-// Cargar datos sincronizados desde Supabase
+// Carga de datos
 async function loadDataFromCloud() {
-    if (!db) {
-        alert("Error: No se pudo cargar la librería de Supabase.");
-        return;
+    if (db) {
+        try {
+            const { data: pData } = await db.from('players').select('*');
+            if (pData && pData.length > 0) {
+                players = pData;
+                localStorage.setItem('petanka_players', JSON.stringify(players));
+            }
+
+            const { data: tData } = await db.from('tournaments').select('*');
+            if (tData && tData.length > 0) {
+                tournaments = tData.map(t => ({ 
+                    id: t.id, 
+                    name: t.name, 
+                    start: t.start_date || t.start, 
+                    end: t.end_date || t.end 
+                }));
+                localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
+            }
+
+            const { data: mData } = await db.from('matches').select('*');
+            if (mData && mData.length > 0) {
+                matches = mData.map(m => ({ 
+                    id: m.id, 
+                    tournamentId: m.tournament_id || m.tournamentId, 
+                    date: m.match_date || m.date, 
+                    results: m.results 
+                }));
+                localStorage.setItem('petanka_matches', JSON.stringify(matches));
+            }
+        } catch (err) {
+            console.warn("Modo offline o error al conectar con Supabase, usando datos locales.");
+        }
     }
-
-    try {
-        const { data: pData, error: pErr } = await db.from('players').select('*');
-        if (pErr) console.error("Error jugadores:", pErr.message);
-        else if (pData) players = pData;
-
-        const { data: tData, error: tErr } = await db.from('tournaments').select('*');
-        if (tErr) console.error("Error torneos:", tErr.message);
-        else if (tData) tournaments = tData.map(t => ({ id: t.id, name: t.name, start: t.start_date, end: t.end_date }));
-
-        const { data: mData, error: mErr } = await db.from('matches').select('*');
-        if (mErr) console.error("Error partidas:", mErr.message);
-        else if (mData) matches = mData.map(m => ({ id: m.id, tournamentId: m.tournament_id, date: m.match_date, results: m.results }));
-
-        renderPlayers();
-        renderTournaments();
-    } catch (err) {
-        alert("Error de conexión al cargar datos de la nube: " + err.message);
-    }
+    renderPlayers();
+    renderTournaments();
 }
 
 function showTab(tabName) {
@@ -64,25 +84,23 @@ function showTab(tabName) {
 
 async function addPlayer() {
     const input = document.getElementById('new-player-name');
+    if (!input) return;
     const name = input.value.trim();
     if (!name) return alert('Introduce un nombre');
     
-    const newP = { id: Date.now(), name };
+    const newP = { id: Date.now(), name: name };
+    
+    players.push(newP);
+    localStorage.setItem('petanka_players', JSON.stringify(players));
+    input.value = '';
+    renderPlayers();
 
-    if (!db) return alert("Cliente de nube no inicializado.");
-
-    try {
-        const { error } = await db.from('players').insert([newP]);
-        if (error) {
-            alert('Error al guardar en Supabase: ' + error.message);
-            return;
+    if (db) {
+        try {
+            await db.from('players').insert([newP]);
+        } catch (err) {
+            console.warn("Guardado localmente. No se pudo sincronizar en la nube.");
         }
-        players.push(newP);
-        input.value = '';
-        renderPlayers();
-        alert('Jugador guardado en la nube correctamente');
-    } catch (err) {
-        alert('Fallo de red al intentar guardar el jugador.');
     }
 }
 
@@ -93,26 +111,28 @@ function confirmDelete(message) {
 async function deletePlayer(id) {
     if (!confirmDelete('Vas a eliminar un jugador del sistema.')) return;
 
-    if (!db) return alert("Cliente de nube no inicializado.");
+    players = players.filter(p => p.id !== id);
+    localStorage.setItem('petanka_players', JSON.stringify(players));
+    renderPlayers();
 
-    try {
-        const { error } = await db.from('players').delete().eq('id', id);
-        if (error) {
-            alert('Error al eliminar en Supabase: ' + error.message);
-            return;
+    if (db) {
+        try {
+            await db.from('players').delete().eq('id', id);
+        } catch (err) {
+            console.warn("Eliminado localmente.");
         }
-        players = players.filter(p => p.id !== id);
-        renderPlayers();
-    } catch (err) {
-        alert('Fallo de red al eliminar jugador.');
     }
 }
 
 function renderPlayers() {
     const container = document.getElementById('players-list');
     if (!container) return;
+    if (players.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-style:italic;">No hay jugadores registrados.</p>';
+        return;
+    }
     container.innerHTML = players.map(p => `
-        <div class="card-item">
+        <div class="card-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee;">
             <span><strong>${p.name}</strong></span>
             <button class="btn-danger" onclick="deletePlayer(${p.id})">Eliminar</button>
         </div>
@@ -121,60 +141,68 @@ function renderPlayers() {
 
 async function createTournament() {
     const nameInput = document.getElementById('tournament-name');
+    if (!nameInput) return;
     const name = nameInput.value.trim();
     const start = document.getElementById('tournament-start').value;
     const end = document.getElementById('tournament-end').value;
     
     if (!name) return alert('Introduce el nombre del torneo');
     
-    const newT = { id: Date.now(), name, start_date: start, end_date: end };
+    const newT = { id: Date.now(), name: name, start: start, end: end };
+    
+    tournaments.push(newT);
+    localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
+    nameInput.value = '';
+    document.getElementById('tournament-start').value = '';
+    document.getElementById('tournament-end').value = '';
+    renderTournaments();
 
-    if (!db) return alert("Cliente de nube no inicializado.");
-
-    try {
-        const { error } = await db.from('tournaments').insert([newT]);
-        if (error) {
-            alert('Error al guardar torneo en Supabase: ' + error.message);
-            return;
+    if (db) {
+        try {
+            await db.from('tournaments').insert([{
+                id: newT.id,
+                name: newT.name,
+                start_date: newT.start || null,
+                end_date: newT.end || null
+            }]);
+        } catch (err) {
+            console.warn("Torneo guardado localmente.");
         }
-        tournaments.push({ id: newT.id, name, start, end });
-        nameInput.value = '';
-        renderTournaments();
-        alert('Torneo guardado en la nube correctamente');
-    } catch (err) {
-        alert('Fallo de red al crear torneo.');
     }
 }
 
 async function deleteTournament(id) {
     if (!confirmDelete('Vas a eliminar un torneo completo con sus registros.')) return;
 
-    if (!db) return alert("Cliente de nube no inicializado.");
+    tournaments = tournaments.filter(t => t.id !== id);
+    matches = matches.filter(m => m.tournamentId !== id);
+    localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
+    localStorage.setItem('petanka_matches', JSON.stringify(matches));
+    renderTournaments();
 
-    try {
-        const { error } = await db.from('tournaments').delete().eq('id', id);
-        if (error) {
-            alert('Error al eliminar torneo en Supabase: ' + error.message);
-            return;
+    if (db) {
+        try {
+            await db.from('tournaments').delete().eq('id', id);
+        } catch (err) {
+            console.warn("Torneo eliminado localmente.");
         }
-        tournaments = tournaments.filter(t => t.id !== id);
-        matches = matches.filter(m => m.tournamentId !== id);
-        renderTournaments();
-    } catch (err) {
-        alert('Fallo de red al eliminar torneo.');
     }
 }
 
 function renderTournaments() {
     const container = document.getElementById('tournaments-list');
     if (!container) return;
+    if (tournaments.length === 0) {
+        container.innerHTML = '<p style="color:#666; font-style:italic;">No hay torneos registrados.</p>';
+        return;
+    }
     container.innerHTML = tournaments.map(t => `
-        <div class="card-item">
+        <div class="card-item" style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; margin-bottom:5px;">
             <div>
                 <strong>${t.name}</strong><br>
-                <small>${t.start ? t.start.replace('T', ' ') : 'Sin fecha'} a ${t.end ? t.end.replace('T', ' ') : 'Sin fecha'}</small>
+                <small style="color:#666;">${t.start ? t.start.replace('T', ' ') : 'Sin fecha'} a ${t.end ? t.end.replace('T', ' ') : 'Sin fecha'}</small>
             </div>
-            <div style="display:flex; gap:4px;">
+            <div style="display:flex; gap:6px;">
                 <button class="btn-primary" onclick="viewStandings(${t.id})">Ver Clasificación</button>
                 <button class="btn-danger" onclick="deleteTournament(${t.id})">Eliminar</button>
             </div>
@@ -185,6 +213,10 @@ function renderTournaments() {
 function populateMatchTournaments() {
     const select = document.getElementById('match-tournament');
     if (!select) return;
+    if (tournaments.length === 0) {
+        select.innerHTML = '<option value="">-- No hay torneos creados --</option>';
+        return;
+    }
     select.innerHTML = tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     renderMatchPlayerInputs();
 }
@@ -194,6 +226,8 @@ function renderMatchPlayerInputs() {
     if (!numEl) return;
     const num = parseInt(numEl.value);
     const container = document.getElementById('match-players-container');
+    if (!container) return;
+    
     let html = '<p style="margin: 10px 0 5px 0; font-weight: bold;">Selecciona jugadores y sus posiciones:</p>';
     
     for (let i = 0; i < num; i++) {
@@ -226,7 +260,7 @@ function updatePlayerOptions() {
 
 async function saveMatch() {
     const tSelect = document.getElementById('match-tournament');
-    if (!tSelect || !tSelect.value) return alert('Selecciona un torneo');
+    if (!tSelect || !tSelect.value) return alert('Selecciona un torneo válido');
     
     const tournamentId = parseInt(tSelect.value);
     const date = document.getElementById('match-date').value;
@@ -250,28 +284,34 @@ async function saveMatch() {
         matchResults.push({ playerId: pId, position: i + 1, score: calculatedPoints });
     }
     
-    const newMatch = { id: Date.now(), tournament_id: tournamentId, match_date: date, results: matchResults };
+    const newMatch = { id: Date.now(), tournamentId: tournamentId, date: date, results: matchResults };
+    matches.push(newMatch);
+    localStorage.setItem('petanka_matches', JSON.stringify(matches));
 
-    if (!db) return alert("Cliente de nube no inicializado.");
+    alert('Partida registrada correctamente');
+    showTab('torneos');
 
-    try {
-        const { error } = await db.from('matches').insert([newMatch]);
-        if (error) {
-            alert('Error al registrar la partida en la nube: ' + error.message);
-            return;
+    if (db) {
+        try {
+            await db.from('matches').insert([{
+                id: newMatch.id,
+                tournament_id: tournamentId,
+                match_date: date || null,
+                results: matchResults
+            }]);
+        } catch (err) {
+            console.warn("Partida guardada localmente.");
         }
-        matches.push({ id: newMatch.id, tournamentId, date, results: matchResults });
-        alert('Partida registrada correctamente en la nube');
-        showTab('torneos');
-    } catch (err) {
-        alert('Fallo de red al registrar partida.');
     }
 }
 
 function viewStandings(tournamentId) {
     currentTournamentId = tournamentId;
     const tournament = tournaments.find(t => t.id === tournamentId);
-    document.getElementById('clasificacion-title').innerText = `Clasificación - ${tournament ? tournament.name : ''}`;
+    const titleEl = document.getElementById('clasificacion-title');
+    if (titleEl) {
+        titleEl.innerText = `Clasificación - ${tournament ? tournament.name : ''}`;
+    }
     
     const tMatches = matches.filter(m => m.tournamentId === tournamentId);
     let stats = {};
@@ -279,44 +319,47 @@ function viewStandings(tournamentId) {
     players.forEach(p => { stats[p.id] = { name: p.name, played: 0, points: 0 }; });
     
     tMatches.forEach(m => {
-        m.results.forEach(r => {
-            if (stats[r.playerId]) {
-                stats[r.playerId].played += 1;
-                stats[r.playerId].points += r.score;
-            }
-        });
+        if (Array.isArray(m.results)) {
+            m.results.forEach(r => {
+                if (stats[r.playerId]) {
+                    stats[r.playerId].played += 1;
+                    stats[r.playerId].points += r.score;
+                }
+            });
+        }
     });
     
     let sorted = Object.values(stats).filter(s => s.played > 0).sort((a,b) => b.points - a.points);
     
     let html = `
-        <table>
+        <table style="width:100%; border-collapse:collapse;">
             <thead>
-                <tr>
-                    <th>Pos</th>
-                    <th>Jugador</th>
-                    <th>Partidas</th>
-                    <th>Puntos Totales</th>
+                <tr style="background:#f2f2f2; text-align:left;">
+                    <th style="padding:8px; border:1px solid #ddd;">Pos</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Jugador</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Partidas</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Puntos Totales</th>
                 </tr>
             </thead>
             <tbody>
-                ${sorted.map((s, idx) => `
+                ${sorted.length > 0 ? sorted.map((s, idx) => `
                     <tr>
-                        <td>${idx + 1}</td>
-                        <td>${s.name}</td>
-                        <td>${s.played}</td>
-                        <td>${s.points}</td>
+                        <td style="padding:8px; border:1px solid #ddd;">${idx + 1}</td>
+                        <td style="padding:8px; border:1px solid #ddd;">${s.name}</td>
+                        <td style="padding:8px; border:1px solid #ddd;">${s.played}</td>
+                        <td style="padding:8px; border:1px solid #ddd;">${s.points}</td>
                     </tr>
-                `).join('')}
+                `).join('') : '<tr><td colspan="4" style="padding:8px; text-align:center;">No hay partidas registradas en este torneo.</td></tr>'}
             </tbody>
         </table>
     `;
     
-    document.getElementById('clasificacion-table-container').innerHTML = html;
+    const tableContainer = document.getElementById('clasificacion-table-container');
+    if (tableContainer) tableContainer.innerHTML = html;
     showTab('clasificacion');
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     loadDataFromCloud();
     showTab('torneos');
 });
