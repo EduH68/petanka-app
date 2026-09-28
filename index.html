@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petanka Txapelketak</title>
-    <!-- Librería oficial de Supabase -->
+    <!-- Carga del CDN de Supabase v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
@@ -32,10 +32,8 @@
         <h1 style="margin:0; font-size: 1.6rem;">Petanka Txapelketak</h1>
     </header>
 
-    <!-- BARRA DE ESTADO DE CONEXIÓN -->
-    <div id="status-bar">Comprobando conexión con la base de datos...</div>
+    <div id="status-bar">Conectando con Supabase...</div>
 
-    <!-- NAVEGACIÓN PRINCIPAL -->
     <nav>
         <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
         <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
@@ -104,9 +102,8 @@
     </div>
 
     <script>
-        // DATOS ACTUALIZADOS Y CORREGIDOS DE SUPABASE
-        const SUPABASE_URL = "https://fkxlxpfglzwihshjcesz.supabase.co.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d2lDW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";
+        const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d21DW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";
 
         let db = null;
         let players = [];
@@ -152,7 +149,7 @@
         async function loadDataFromCloud() {
             const client = getDbClient();
             if (!client) {
-                setStatus("Error: No se pudo cargar la librería de Supabase.", true);
+                setStatus("Error: No se pudo inicializar la librería de Supabase.", true);
                 return;
             }
 
@@ -179,10 +176,10 @@
                     results: m.results
                 }));
 
-                setStatus("Conectado con éxito a la base de datos.");
+                setStatus("Conectado con éxito a Supabase.");
             } catch (e) {
-                console.error("Error de conexión:", e);
-                setStatus("Error de conexión: " + e.message, true);
+                console.error(e);
+                setStatus("Error de red/CORS ('Failed to fetch'). Verifica si tienes bloqueador de anuncios, VPN o RLS activado en Supabase.", true);
             }
 
             renderPlayers();
@@ -204,7 +201,7 @@
                     input.value = '';
                     await loadDataFromCloud();
                 } catch (err) {
-                    alert('Error al guardar jugador: ' + err.message);
+                    alert('Error al guardar: ' + err.message);
                 }
             }
         }
