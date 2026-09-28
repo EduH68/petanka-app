@@ -2,7 +2,7 @@
 // CONFIGURACIÓN DE SUPABASE
 // ==========================================
 const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MD...; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MDM4MTU3MzAsImV4cCI6MjAxOTM5MTzczMH0.H5d21DW6KBAvfZA7NcIpSgBi12oM1mAbo_S_78yIakI"; 
 
 // Inicialización del cliente
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -203,7 +203,7 @@ function renderMatchPlayerInputs() {
         html += `
             <div class="card-item" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
                 <span style="font-weight:bold; min-width:70px;">${i + 1}º Lugar:</span>
-                <select id="match-player-pos-${i}" style="margin:0;">
+                <select id="match-player-pos-${i}" class="match-player-select" onchange="updatePlayerOptions()" style="margin:0;">
                     <option value="">-- Seleccionar Jugador --</option>
                     ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
                 </select>
@@ -211,6 +211,22 @@ function renderMatchPlayerInputs() {
         `;
     }
     container.innerHTML = html;
+    updatePlayerOptions();
+}
+
+// Deshabilita en los desplegables los jugadores ya seleccionados
+function updatePlayerOptions() {
+    const selects = Array.from(document.querySelectorAll('.match-player-select'));
+    const selectedValues = selects.map(s => s.value).filter(val => val !== "");
+
+    selects.forEach(currentSelect => {
+        const currentValue = currentSelect.value;
+        Array.from(currentSelect.options).forEach(option => {
+            if (option.value === "") return;
+            // Si la opción está elegida en otro select distinto, se deshabilita
+            option.disabled = selectedValues.includes(option.value) && option.value !== currentValue;
+        });
+    });
 }
 
 async function saveMatch() {
