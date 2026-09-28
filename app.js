@@ -24,19 +24,23 @@ let currentTournamentId = null;
 
 const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
 
-// Carga de datos
+// Carga de datos desde Supabase
 async function loadDataFromCloud() {
     if (db) {
         try {
-            const { data: pData } = await db.from('players').select('*');
-            if (pData && pData.length > 0) {
-                players = pData;
+            // Cargar Jugadores
+            const { data: pData, error: pErr } = await db.from('players').select('*');
+            if (pErr) console.error("Error al cargar jugadores de Supabase:", pErr.message);
+            else {
+                players = pData || [];
                 localStorage.setItem('petanka_players', JSON.stringify(players));
             }
 
-            const { data: tData } = await db.from('tournaments').select('*');
-            if (tData && tData.length > 0) {
-                tournaments = tData.map(t => ({ 
+            // Cargar Torneos
+            const { data: tData, error: tErr } = await db.from('tournaments').select('*');
+            if (tErr) console.error("Error al cargar torneos de Supabase:", tErr.message);
+            else {
+                tournaments = (tData || []).map(t => ({ 
                     id: t.id, 
                     name: t.name, 
                     start: t.start_date || t.start, 
@@ -45,9 +49,11 @@ async function loadDataFromCloud() {
                 localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
             }
 
-            const { data: mData } = await db.from('matches').select('*');
-            if (mData && mData.length > 0) {
-                matches = mData.map(m => ({ 
+            // Cargar Partidas
+            const { data: mData, error: mErr } = await db.from('matches').select('*');
+            if (mErr) console.error("Error al cargar partidas de Supabase:", mErr.message);
+            else {
+                matches = (mData || []).map(m => ({ 
                     id: m.id, 
                     tournamentId: m.tournament_id || m.tournamentId, 
                     date: m.match_date || m.date, 
@@ -56,7 +62,7 @@ async function loadDataFromCloud() {
                 localStorage.setItem('petanka_matches', JSON.stringify(matches));
             }
         } catch (err) {
-            console.warn("Modo offline o error al conectar con Supabase, usando datos locales.");
+            console.warn("Modo offline o error al conectar con Supabase, usando datos locales.", err);
         }
     }
     renderPlayers();
@@ -82,46 +88,56 @@ function showTab(tabName) {
     if (tabName === 'partidas') populateMatchTournaments();
 }
 
+// GUARDAR JUGADOR (Corregido)
 async function addPlayer() {
     const input = document.getElementById('new-player-name');
     if (!input) return;
     const name = input.value.trim();
     if (!name) return alert('Introduce un nombre');
     
-    const newP = { id: Date.now(), name: name };
-    
-    players.push(newP);
+    if (db) {
+        // Guardamos en Supabase sin forzar 'id' para evitar conflictos de tipo de dato
+        const { data, error } = await db.from('players').insert([{ name: name }]).select();
+        
+        if (error) {
+            alert('Error al guardar jugador en la nube: ' + error.message);
+            console.error(error);
+            return;
+        }
+        
+        if (data && data.length > 0) {
+            players.push(data[0]);
+        } else {
+            players.push({ id: Date.now(), name: name });
+        }
+    } else {
+        players.push({ id: Date.now(), name: name });
+    }
+
     localStorage.setItem('petanka_players', JSON.stringify(players));
     input.value = '';
     renderPlayers();
-
-    if (db) {
-        try {
-            await db.from('players').insert([newP]);
-        } catch (err) {
-            console.warn("Guardado localmente. No se pudo sincronizar en la nube.");
-        }
-    }
 }
 
 function confirmDelete(message) {
     return confirm(`${message}\n\n¿Estás seguro/a? ¿Vas a eliminarlo? ¿Tienes permiso de tu Admin Edulindo?`);
 }
 
+// ELIMINAR JUGADOR (Corregido)
 async function deletePlayer(id) {
     if (!confirmDelete('Vas a eliminar un jugador del sistema.')) return;
+
+    if (db) {
+        const { error } = await db.from('players').delete().eq('id', id);
+        if (error) {
+            alert('Error al eliminar en la nube: ' + error.message);
+            return;
+        }
+    }
 
     players = players.filter(p => p.id !== id);
     localStorage.setItem('petanka_players', JSON.stringify(players));
     renderPlayers();
-
-    if (db) {
-        try {
-            await db.from('players').delete().eq('id', id);
-        } catch (err) {
-            console.warn("Eliminado localmente.");
-        }
-    }
 }
 
 function renderPlayers() {
@@ -139,6 +155,7 @@ function renderPlayers() {
     `).join('');
 }
 
+// CREAR TORNEO (Corregido)
 async function createTournament() {
     const nameInput = document.getElementById('tournament-name');
     if (!nameInput) return;
@@ -148,45 +165,58 @@ async function createTournament() {
     
     if (!name) return alert('Introduce el nombre del torneo');
     
-    const newT = { id: Date.now(), name: name, start: start, end: end };
-    
-    tournaments.push(newT);
+    const tournamentObj = {
+        name: name,
+        start_date: start || null,
+        end_date: end || null
+    };
+
+    if (db) {
+        const { data, error } = await db.from('tournaments').insert([tournamentObj]).select();
+        
+        if (error) {
+            alert('Error al crear torneo en la nube: ' + error.message);
+            console.error(error);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            const t = data[0];
+            tournaments.push({
+                id: t.id,
+                name: t.name,
+                start: t.start_date || t.start,
+                end: t.end_date || t.end
+            });
+        }
+    } else {
+        tournaments.push({ id: Date.now(), name: name, start: start, end: end });
+    }
+
     localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
     nameInput.value = '';
     document.getElementById('tournament-start').value = '';
     document.getElementById('tournament-end').value = '';
     renderTournaments();
-
-    if (db) {
-        try {
-            await db.from('tournaments').insert([{
-                id: newT.id,
-                name: newT.name,
-                start_date: newT.start || null,
-                end_date: newT.end || null
-            }]);
-        } catch (err) {
-            console.warn("Torneo guardado localmente.");
-        }
-    }
 }
 
+// ELIMINAR TORNEO (Corregido)
 async function deleteTournament(id) {
     if (!confirmDelete('Vas a eliminar un torneo completo con sus registros.')) return;
+
+    if (db) {
+        const { error } = await db.from('tournaments').delete().eq('id', id);
+        if (error) {
+            alert('Error al eliminar torneo en la nube: ' + error.message);
+            return;
+        }
+    }
 
     tournaments = tournaments.filter(t => t.id !== id);
     matches = matches.filter(m => m.tournamentId !== id);
     localStorage.setItem('petanka_tournaments', JSON.stringify(tournaments));
     localStorage.setItem('petanka_matches', JSON.stringify(matches));
     renderTournaments();
-
-    if (db) {
-        try {
-            await db.from('tournaments').delete().eq('id', id);
-        } catch (err) {
-            console.warn("Torneo eliminado localmente.");
-        }
-    }
 }
 
 function renderTournaments() {
@@ -200,7 +230,7 @@ function renderTournaments() {
         <div class="card-item" style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; margin-bottom:5px;">
             <div>
                 <strong>${t.name}</strong><br>
-                <small style="color:#666;">${t.start ? t.start.replace('T', ' ') : 'Sin fecha'} a ${t.end ? t.end.replace('T', ' ') : 'Sin fecha'}</small>
+                <small style="color:#666;">${t.start ? String(t.start).replace('T', ' ') : 'Sin fecha'} a ${t.end ? String(t.end).replace('T', ' ') : 'Sin fecha'}</small>
             </div>
             <div style="display:flex; gap:6px;">
                 <button class="btn-primary" onclick="viewStandings(${t.id})">Ver Clasificación</button>
@@ -258,6 +288,7 @@ function updatePlayerOptions() {
     });
 }
 
+// GUARDAR PARTIDA (Corregido)
 async function saveMatch() {
     const tSelect = document.getElementById('match-tournament');
     if (!tSelect || !tSelect.value) return alert('Selecciona un torneo válido');
@@ -284,25 +315,35 @@ async function saveMatch() {
         matchResults.push({ playerId: pId, position: i + 1, score: calculatedPoints });
     }
     
-    const newMatch = { id: Date.now(), tournamentId: tournamentId, date: date, results: matchResults };
-    matches.push(newMatch);
-    localStorage.setItem('petanka_matches', JSON.stringify(matches));
-
-    alert('Partida registrada correctamente');
-    showTab('torneos');
+    const matchObj = {
+        tournament_id: tournamentId,
+        match_date: date || null,
+        results: matchResults
+    };
 
     if (db) {
-        try {
-            await db.from('matches').insert([{
-                id: newMatch.id,
-                tournament_id: tournamentId,
-                match_date: date || null,
-                results: matchResults
-            }]);
-        } catch (err) {
-            console.warn("Partida guardada localmente.");
+        const { data, error } = await db.from('matches').insert([matchObj]).select();
+        if (error) {
+            alert('Error al guardar la partida en la nube: ' + error.message);
+            console.error(error);
+            return;
         }
+        if (data && data.length > 0) {
+            const m = data[0];
+            matches.push({
+                id: m.id,
+                tournamentId: m.tournament_id,
+                date: m.match_date,
+                results: m.results
+            });
+        }
+    } else {
+        matches.push({ id: Date.now(), tournamentId: tournamentId, date: date, results: matchResults });
     }
+
+    localStorage.setItem('petanka_matches', JSON.stringify(matches));
+    alert('Partida registrada correctamente');
+    showTab('torneos');
 }
 
 function viewStandings(tournamentId) {
