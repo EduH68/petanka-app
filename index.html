@@ -4,73 +4,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petanka Txapelketak</title>
-    <!-- Script Oficial CDN de Supabase JS -->
+    <!-- Carga sincrónica del SDK oficial de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; color: #333; }
         header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 15px; }
         nav { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        nav button { flex: 1; padding: 10px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        nav button { flex: 1; padding: 12px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem; color: #495057; }
         nav button.active { background: #007bff; color: white; }
-        .section { display: none; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section { display: none; background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .section.active { display: block; }
-        .card-item { background: #fff; border: 1px solid #ddd; padding: 10px; margin-bottom: 8px; border-radius: 4px; }
-        .btn-primary { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
-        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
-        input, select { width: 100%; padding: 8px; margin: 6px 0 12px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .card-item { background: #fff; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 4px; }
+        .btn-primary { background-color: #28a745; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-primary:hover { background-color: #218838; }
+        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-danger:hover { background-color: #c82333; }
+        input, select { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+        label { font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f2f2f2; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1 style="margin:0; font-size: 1.5rem;">Petanka Txapelketak</h1>
+        <h1 style="margin:0; font-size: 1.6rem;">Petanka Txapelketak</h1>
     </header>
 
+    <!-- NAVEGACIÓN PRINCIPAL -->
     <nav>
         <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
         <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
         <button id="tab-partidas" onclick="showTab('partidas')">Nueva Partida</button>
     </nav>
 
-    <!-- SECCIÓN TORNEOS -->
+    <!-- SECCIÓN 1: TORNEOS -->
     <div id="sec-torneos" class="section active">
         <h2>Crear Nuevo Torneo</h2>
-        <label>Nombre del Torneo:</label>
+        <label for="tournament-name">Nombre del Torneo:</label>
         <input type="text" id="tournament-name" placeholder="Ej: Torneo Verano 2026">
         
-        <label>Fecha de Inicio:</label>
+        <label for="tournament-start">Fecha de Inicio:</label>
         <input type="date" id="tournament-start">
         
-        <label>Fecha de Fin:</label>
+        <label for="tournament-end">Fecha de Fin:</label>
         <input type="date" id="tournament-end">
         
         <button class="btn-primary" onclick="createTournament()">Guardar Torneo</button>
 
-        <h3 style="margin-top: 25px;">Lista de Torneos</h3>
+        <h3 style="margin-top: 30px;">Lista de Torneos</h3>
         <div id="tournaments-list">Cargando torneos...</div>
     </div>
 
-    <!-- SECCIÓN JUGADORES -->
+    <!-- SECCIÓN 2: JUGADORES -->
     <div id="sec-jugadores" class="section">
         <h2>Registrar Jugador</h2>
-        <label>Nombre del Jugador:</label>
+        <label for="new-player-name">Nombre del Jugador:</label>
         <input type="text" id="new-player-name" placeholder="Ej: Mikel Arana">
         <button class="btn-primary" onclick="addPlayer()">Añadir Jugador</button>
 
-        <h3 style="margin-top: 25px;">Jugadores Registrados</h3>
+        <h3 style="margin-top: 30px;">Jugadores Registrados</h3>
         <div id="players-list">Cargando jugadores...</div>
     </div>
 
-    <!-- SECCIÓN PARTIDAS -->
+    <!-- SECCIÓN 3: PARTIDAS -->
     <div id="sec-partidas" class="section">
         <h2>Registrar Partida</h2>
-        <label>Torneo:</label>
+        <label for="match-tournament">Torneo:</label>
         <select id="match-tournament"></select>
 
-        <label>Fecha de la Partida:</label>
+        <label for="match-date">Fecha de la Partida:</label>
         <input type="date" id="match-date">
 
-        <label>Número de Jugadores:</label>
+        <label for="match-num-players">Número de Jugadores:</label>
         <select id="match-num-players" onchange="renderMatchPlayerInputs()">
             <option value="2">2 Jugadores</option>
             <option value="3">3 Jugadores</option>
@@ -86,14 +94,328 @@
         <button class="btn-primary" style="margin-top:15px;" onclick="saveMatch()">Guardar Partida</button>
     </div>
 
-    <!-- SECCIÓN CLASIFICACIÓN -->
+    <!-- SECCIÓN 4: CLASIFICACIÓN -->
     <div id="sec-clasificacion" class="section">
         <h2 id="clasificacion-title">Clasificación</h2>
         <button class="btn-primary" onclick="showTab('torneos')" style="margin-bottom: 15px;">← Volver a Torneos</button>
         <div id="clasificacion-table-container"></div>
     </div>
 
-    <!-- Cargar archivo de lógica JavaScript -->
-    <script src="app.js"></script>
+    <script>
+        // CONFIGURACIÓN DE CONEXIÓN A SUPABASE
+        const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MDM4MTU3MzAsImV4cCI6MjAxOTM5MTzczMH0.H5d21DW6KBAvfZA7NcIpSgBi12oM1mAbo_S_78yIakI";
+
+        let db = null;
+        let players = [];
+        let tournaments = [];
+        let matches = [];
+        const BASE_POINTS = [10, 8, 6, 4, 3, 2, 1, 0];
+
+        // Garantizar inicialización del cliente Supabase
+        function getDbClient() {
+            if (!db && window.supabase) {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+            return db;
+        }
+
+        // Navegación de pestañas
+        function showTab(tabName) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+
+            if (tabName !== 'clasificacion') {
+                const sec = document.getElementById('sec-' + tabName);
+                const tab = document.getElementById('tab-' + tabName);
+                if (sec) sec.classList.add('active');
+                if (tab) tab.classList.add('active');
+            } else {
+                const secClas = document.getElementById('sec-clasificacion');
+                if (secClas) secClas.classList.add('active');
+            }
+
+            if (tabName === 'jugadores') renderPlayers();
+            if (tabName === 'torneos') renderTournaments();
+            if (tabName === 'partidas') populateMatchTournaments();
+        }
+
+        // Carga de datos desde Supabase
+        async function loadDataFromCloud() {
+            const client = getDbClient();
+            if (!client) {
+                console.error("No se pudo conectar a la base de datos de Supabase.");
+                return;
+            }
+
+            try {
+                // Obtener jugadores
+                const { data: pData, error: pErr } = await client.from('players').select('*').order('name', { ascending: true });
+                if (pErr) console.error("Error al cargar jugadores:", pErr.message);
+                else players = pData || [];
+
+                // Obtener torneos
+                const { data: tData, error: tErr } = await client.from('tournaments').select('*').order('id', { ascending: false });
+                if (tErr) console.error("Error al cargar torneos:", tErr.message);
+                else {
+                    tournaments = (tData || []).map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        start: t.start_date || t.start,
+                        end: t.end_date || t.end
+                    }));
+                }
+
+                // Obtener partidas
+                const { data: mData, error: mErr } = await client.from('matches').select('*');
+                if (mErr) console.error("Error al cargar partidas:", mErr.message);
+                else {
+                    matches = (mData || []).map(m => ({
+                        id: m.id,
+                        tournamentId: m.tournament_id || m.tournamentId,
+                        date: m.match_date || m.date,
+                        results: m.results
+                    }));
+                }
+            } catch (e) {
+                console.error("Excepción en conexión:", e);
+            }
+
+            renderPlayers();
+            renderTournaments();
+        }
+
+        // --- GESTIÓN DE JUGADORES ---
+        async function addPlayer() {
+            const input = document.getElementById('new-player-name');
+            if (!input) return;
+            const name = input.value.trim();
+            if (!name) return alert('Introduce un nombre válido.');
+
+            const client = getDbClient();
+            if (client) {
+                const { error } = await client.from('players').insert([{ name: name }]);
+                if (error) return alert('Error al guardar jugador: ' + error.message);
+                alert('Jugador guardado con éxito.');
+                input.value = '';
+                await loadDataFromCloud();
+            }
+        }
+
+        async function deletePlayer(id) {
+            if (!confirm('¿Deseas eliminar este jugador?')) return;
+            const client = getDbClient();
+            if (client) {
+                const { error } = await client.from('players').delete().eq('id', id);
+                if (error) return alert('Error al eliminar: ' + error.message);
+                await loadDataFromCloud();
+            }
+        }
+
+        function renderPlayers() {
+            const container = document.getElementById('players-list');
+            if (!container) return;
+            if (players.length === 0) {
+                container.innerHTML = '<p style="color:#666; font-style:italic;">No hay jugadores registrados.</p>';
+                return;
+            }
+            container.innerHTML = players.map(p => `
+                <div class="card-item" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span><strong>${p.name}</strong></span>
+                    <button class="btn-danger" onclick="deletePlayer(${p.id})">Eliminar</button>
+                </div>
+            `).join('');
+        }
+
+        // --- GESTIÓN DE TORNEOS ---
+        async function createTournament() {
+            const nameInput = document.getElementById('tournament-name');
+            if (!nameInput) return;
+            const name = nameInput.value.trim();
+            const start = document.getElementById('tournament-start').value;
+            const end = document.getElementById('tournament-end').value;
+
+            if (!name) return alert('Introduce el nombre del torneo.');
+
+            const client = getDbClient();
+            if (client) {
+                const { error } = await client.from('tournaments').insert([{
+                    name: name,
+                    start_date: start || null,
+                    end_date: end || null
+                }]);
+
+                if (error) return alert('Error al crear torneo: ' + error.message);
+
+                alert('Torneo creado correctamente.');
+                nameInput.value = '';
+                document.getElementById('tournament-start').value = '';
+                document.getElementById('tournament-end').value = '';
+                await loadDataFromCloud();
+            }
+        }
+
+        async function deleteTournament(id) {
+            if (!confirm('¿Deseas eliminar este torneo y sus datos asociados?')) return;
+            const client = getDbClient();
+            if (client) {
+                const { error } = await client.from('tournaments').delete().eq('id', id);
+                if (error) return alert('Error al eliminar torneo: ' + error.message);
+                await loadDataFromCloud();
+            }
+        }
+
+        function renderTournaments() {
+            const container = document.getElementById('tournaments-list');
+            if (!container) return;
+            if (tournaments.length === 0) {
+                container.innerHTML = '<p style="color:#666; font-style:italic;">No hay torneos registrados.</p>';
+                return;
+            }
+            container.innerHTML = tournaments.map(t => `
+                <div class="card-item" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <strong>${t.name}</strong><br>
+                        <small style="color:#666;">${t.start || 'Sin fecha'} a ${t.end || 'Sin fecha'}</small>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-primary" onclick="viewStandings(${t.id})">Ver Clasificación</button>
+                        <button class="btn-danger" onclick="deleteTournament(${t.id})">Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- GESTIÓN DE PARTIDAS Y CLASIFICACIÓN ---
+        function populateMatchTournaments() {
+            const select = document.getElementById('match-tournament');
+            if (!select) return;
+            if (tournaments.length === 0) {
+                select.innerHTML = '<option value="">-- No hay torneos registrados --</option>';
+                return;
+            }
+            select.innerHTML = tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            renderMatchPlayerInputs();
+        }
+
+        function renderMatchPlayerInputs() {
+            const numEl = document.getElementById('match-num-players');
+            if (!numEl) return;
+            const num = parseInt(numEl.value);
+            const container = document.getElementById('match-players-container');
+            if (!container) return;
+
+            let html = '<p style="margin: 10px 0 5px 0; font-weight: bold;">Selecciona las posiciones de los jugadores:</p>';
+
+            for (let i = 0; i < num; i++) {
+                html += `
+                    <div class="card-item" style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:bold; min-width:70px;">${i + 1}º Lugar:</span>
+                        <select id="match-player-pos-${i}" class="match-player-select">
+                            <option value="">-- Seleccionar Jugador --</option>
+                            ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        async function saveMatch() {
+            const tSelect = document.getElementById('match-tournament');
+            if (!tSelect || !tSelect.value) return alert('Selecciona un torneo válido.');
+
+            const tournamentId = parseInt(tSelect.value);
+            const date = document.getElementById('match-date').value;
+            const num = parseInt(document.getElementById('match-num-players').value);
+
+            let selectedPlayers = [];
+            let matchResults = [];
+
+            for (let i = 0; i < num; i++) {
+                const pSelect = document.getElementById(`match-player-pos-${i}`);
+                if (!pSelect || !pSelect.value) return alert(`Selecciona el jugador para la posición ${i + 1}º.`);
+                const pId = parseInt(pSelect.value);
+
+                if (selectedPlayers.includes(pId)) return alert('No puedes repetir el mismo jugador en varias posiciones.');
+                selectedPlayers.push(pId);
+
+                const basePoint = BASE_POINTS[i] !== undefined ? BASE_POINTS[i] : 0;
+                matchResults.push({ playerId: pId, position: i + 1, score: basePoint * num });
+            }
+
+            const client = getDbClient();
+            if (client) {
+                const { error } = await client.from('matches').insert([{
+                    tournament_id: tournamentId,
+                    match_date: date || null,
+                    results: matchResults
+                }]);
+
+                if (error) return alert('Error al registrar la partida: ' + error.message);
+
+                alert('Partida registrada correctamente.');
+                await loadDataFromCloud();
+                showTab('torneos');
+            }
+        }
+
+        function viewStandings(tournamentId) {
+            const tournament = tournaments.find(t => t.id === tournamentId);
+            const titleEl = document.getElementById('clasificacion-title');
+            if (titleEl) titleEl.innerText = `Clasificación - ${tournament ? tournament.name : ''}`;
+
+            const tMatches = matches.filter(m => m.tournamentId === tournamentId);
+            let stats = {};
+
+            players.forEach(p => { stats[p.id] = { name: p.name, played: 0, points: 0 }; });
+
+            tMatches.forEach(m => {
+                if (Array.isArray(m.results)) {
+                    m.results.forEach(r => {
+                        if (stats[r.playerId]) {
+                            stats[r.playerId].played += 1;
+                            stats[r.playerId].points += r.score;
+                        }
+                    });
+                }
+            });
+
+            let sorted = Object.values(stats).filter(s => s.played > 0).sort((a,b) => b.points - a.points);
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pos</th>
+                            <th>Jugador</th>
+                            <th>Partidas</th>
+                            <th>Puntos Totales</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sorted.length > 0 ? sorted.map((s, idx) => `
+                            <tr>
+                                <td>${idx + 1}</td>
+                                <td>${s.name}</td>
+                                <td>${s.played}</td>
+                                <td>${s.points}</td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="4" style="text-align:center;">No hay partidas registradas en este torneo.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+
+            const tableContainer = document.getElementById('clasificacion-table-container');
+            if (tableContainer) tableContainer.innerHTML = html;
+            showTab('clasificacion');
+        }
+
+        // Inicializar al cargar la página
+        window.addEventListener('DOMContentLoaded', async () => {
+            getDbClient();
+            await loadDataFromCloud();
+        });
+    </script>
 </body>
 </html>
