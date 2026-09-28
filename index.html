@@ -4,100 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petanka Txapelketak</title>
-    <link rel="stylesheet" href="styles.css">
-    <!-- Carga de la librería oficial de Supabase desde CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <!-- Script Oficial CDN de Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; }
+        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 15px; }
+        nav { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        nav button { flex: 1; padding: 10px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        nav button.active { background: #007bff; color: white; }
+        .section { display: none; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section.active { display: block; }
+        .card-item { background: #fff; border: 1px solid #ddd; padding: 10px; margin-bottom: 8px; border-radius: 4px; }
+        .btn-primary { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+        input, select { width: 100%; padding: 8px; margin: 6px 0 12px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Petanka Txapelketak</h1>
-        </header>
 
-        <nav>
-            <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
-            <button id="tab-partidas" onclick="showTab('partidas')">Partidas</button>
-            <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
-        </nav>
+    <header>
+        <h1 style="margin:0; font-size: 1.5rem;">Petanka Txapelketak</h1>
+    </header>
 
-        <!-- SECCIÓN TORNEOS -->
-        <div id="sec-torneos" class="section active">
-            <h2>Gestión de Torneos</h2>
-            <div class="card">
-                <h3>Crear Nuevo Torneo</h3>
-                <div class="form-group">
-                    <label>Nombre del Torneo:</label>
-                    <input type="text" id="tournament-name" placeholder="Ej: Torneo de Verano">
-                </div>
-                <div class="form-group" style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <label>Fecha Inicio:</label>
-                        <input type="datetime-local" id="tournament-start">
-                    </div>
-                    <div style="flex:1;">
-                        <label>Fecha Fin:</label>
-                        <input type="datetime-local" id="tournament-end">
-                    </div>
-                </div>
-                <button class="btn-success" onclick="createTournament()">Crear Torneo</button>
-            </div>
+    <nav>
+        <button id="tab-torneos" class="active" onclick="showTab('torneos')">Torneos</button>
+        <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
+        <button id="tab-partidas" onclick="showTab('partidas')">Nueva Partida</button>
+    </nav>
 
-            <h3>Torneos Registrados</h3>
-            <div id="tournaments-list"></div>
-        </div>
+    <!-- SECCIÓN TORNEOS -->
+    <div id="sec-torneos" class="section active">
+        <h2>Crear Nuevo Torneo</h2>
+        <label>Nombre del Torneo:</label>
+        <input type="text" id="tournament-name" placeholder="Ej: Torneo Verano 2026">
+        
+        <label>Fecha de Inicio:</label>
+        <input type="date" id="tournament-start">
+        
+        <label>Fecha de Fin:</label>
+        <input type="date" id="tournament-end">
+        
+        <button class="btn-primary" onclick="createTournament()">Guardar Torneo</button>
 
-        <!-- SECCIÓN PARTIDAS -->
-        <div id="sec-partidas" class="section">
-            <h2>Registrar Partida</h2>
-            <div class="card">
-                <div class="form-group">
-                    <label>Selecciona Torneo:</label>
-                    <select id="match-tournament"></select>
-                </div>
-                <div class="form-group">
-                    <label>Fecha y Hora:</label>
-                    <input type="datetime-local" id="match-date">
-                </div>
-                <div class="form-group">
-                    <label>Número de Jugadores:</label>
-                    <select id="match-num-players" onchange="renderMatchPlayerInputs()">
-                        <option value="4">4 Jugadores</option>
-                        <option value="5">5 Jugadores</option>
-                        <option value="6">6 Jugadores</option>
-                        <option value="7">7 Jugadores</option>
-                        <option value="8">8 Jugadores</option>
-                    </select>
-                </div>
-
-                <div id="match-players-container"></div>
-
-                <button class="btn-success" style="margin-top:15px;" onclick="saveMatch()">Guardar Partida</button>
-            </div>
-        </div>
-
-        <!-- SECCIÓN JUGADORES -->
-        <div id="sec-jugadores" class="section">
-            <h2>Gestión de Jugadores</h2>
-            <div class="card">
-                <div class="form-group">
-                    <input type="text" id="new-player-name" placeholder="Nombre del jugador">
-                </div>
-                <button class="btn-success" onclick="addPlayer()">Guardar Jugador</button>
-            </div>
-
-            <h3>Listado de Jugadores</h3>
-            <div id="players-list"></div>
-        </div>
-
-        <!-- SECCIÓN CLASIFICACIÓN -->
-        <div id="sec-clasificacion" class="section">
-            <h2 id="clasificacion-title">Clasificación</h2>
-            <button class="btn-primary" style="margin-bottom:15px;" onclick="showTab('torneos')">← Volver a Torneos</button>
-            <div id="clasificacion-table-container"></div>
-        </div>
+        <h3 style="margin-top: 25px;">Lista de Torneos</h3>
+        <div id="tournaments-list">Cargando torneos...</div>
     </div>
 
-    <!-- Script principal con parametrización anti-caché -->
-    <script src="app.js?v=3"></script>
+    <!-- SECCIÓN JUGADORES -->
+    <div id="sec-jugadores" class="section">
+        <h2>Registrar Jugador</h2>
+        <label>Nombre del Jugador:</label>
+        <input type="text" id="new-player-name" placeholder="Ej: Mikel Arana">
+        <button class="btn-primary" onclick="addPlayer()">Añadir Jugador</button>
+
+        <h3 style="margin-top: 25px;">Jugadores Registrados</h3>
+        <div id="players-list">Cargando jugadores...</div>
+    </div>
+
+    <!-- SECCIÓN PARTIDAS -->
+    <div id="sec-partidas" class="section">
+        <h2>Registrar Partida</h2>
+        <label>Torneo:</label>
+        <select id="match-tournament"></select>
+
+        <label>Fecha de la Partida:</label>
+        <input type="date" id="match-date">
+
+        <label>Número de Jugadores:</label>
+        <select id="match-num-players" onchange="renderMatchPlayerInputs()">
+            <option value="2">2 Jugadores</option>
+            <option value="3">3 Jugadores</option>
+            <option value="4" selected>4 Jugadores</option>
+            <option value="5">5 Jugadores</option>
+            <option value="6">6 Jugadores</option>
+            <option value="7">7 Jugadores</option>
+            <option value="8">8 Jugadores</option>
+        </select>
+
+        <div id="match-players-container"></div>
+
+        <button class="btn-primary" style="margin-top:15px;" onclick="saveMatch()">Guardar Partida</button>
+    </div>
+
+    <!-- SECCIÓN CLASIFICACIÓN -->
+    <div id="sec-clasificacion" class="section">
+        <h2 id="clasificacion-title">Clasificación</h2>
+        <button class="btn-primary" onclick="showTab('torneos')" style="margin-bottom: 15px;">← Volver a Torneos</button>
+        <div id="clasificacion-table-container"></div>
+    </div>
+
+    <!-- Cargar archivo de lógica JavaScript -->
+    <script src="app.js"></script>
 </body>
 </html>
