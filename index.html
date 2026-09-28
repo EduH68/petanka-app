@@ -104,8 +104,9 @@
     </div>
 
     <script>
+        // DATOS ACTUALIZADOS Y CORREGIDOS DE SUPABASE
         const SUPABASE_URL = "https://fkxlxpftglzwihshjcesz.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZ0Z2x6d2loc2hqY2VzeiIsInJvbGUiOiJhb24iLCJpYXQiOjE3MDM4MTU3MzAsImV4cCI6MjAxOTM5MTzczMH0.H5d21DW6KBAvfZA7NcIpSgBi12oM1mAbo_S_78yIakI";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZreGx4cGZnbHp3aWhzaGpjZXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1Mjg1NDgsImV4cCI6MjEwNjEwNDU0OH0.H5d21DW6KBAvfzA7NcIpSgB1i2Om1mABo_shoAfpaVs";
 
         let db = null;
         let players = [];
@@ -151,7 +152,7 @@
         async function loadDataFromCloud() {
             const client = getDbClient();
             if (!client) {
-                setStatus("Error: La librería de Supabase no se ha podido cargar.", true);
+                setStatus("Error: No se pudo cargar la librería de Supabase.", true);
                 return;
             }
 
@@ -178,10 +179,10 @@
                     results: m.results
                 }));
 
-                setStatus("Conectado con éxito a la nube.");
+                setStatus("Conectado con éxito a la base de datos.");
             } catch (e) {
-                console.error("Error de red:", e);
-                setStatus("Error de conexión ('Failed to fetch'): Comprueba bloqueadores de red/VPN o refresca la página.", true);
+                console.error("Error de conexión:", e);
+                setStatus("Error de conexión: " + e.message, true);
             }
 
             renderPlayers();
@@ -203,7 +204,7 @@
                     input.value = '';
                     await loadDataFromCloud();
                 } catch (err) {
-                    alert('Error al guardar: ' + err.message);
+                    alert('Error al guardar jugador: ' + err.message);
                 }
             }
         }
@@ -257,7 +258,7 @@
                     document.getElementById('tournament-end').value = '';
                     await loadDataFromCloud();
                 } catch (err) {
-                    alert('Error al guardar torneo: ' + err.message);
+                    alert('Error al crear torneo: ' + err.message);
                 }
             }
         }
