@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Petanka Txapelketak</title>
+    <title>Petanka Txapelketak - v12.32h</title>
     <!-- Librería oficial de Supabase v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; color: #333; }
-        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 10px; }
+        header { background-color: #007bff; color: white; padding: 15px; text-align: center; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.4rem; }
+        .btn-refresh { background-color: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .btn-refresh:hover { background-color: #138496; }
         #status-bar { padding: 10px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; margin-bottom: 15px; text-align: center; background: #fff3cd; color: #856404; }
         nav { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
         nav button { flex: 1; padding: 12px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem; color: #495057; }
@@ -29,7 +32,8 @@
 <body>
 
     <header>
-        <h1 style="margin:0; font-size: 1.6rem;">Petanka Txapelketak</h1>
+        <h1>Petanka Txapelketak</h1>
+        <button class="btn-refresh" onclick="manualRefresh()">🔄 Actualizar Datos</button>
     </header>
 
     <div id="status-bar">Conectando con Supabase...</div>
@@ -125,6 +129,11 @@
                 db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
             return db;
+        }
+
+        async function manualRefresh() {
+            setStatus("Actualizando datos...");
+            await loadDataFromCloud();
         }
 
         function showTab(tabName) {
@@ -315,7 +324,7 @@
                 html += `
                     <div class="card-item" style="display:flex; align-items:center; gap:8px;">
                         <span style="font-weight:bold; min-width:70px;">${i + 1}º Lugar:</span>
-                        <select id="match-player-pos-${i}">
+                        <select id="match-player-pos-${i}" class="match-player-select" onchange="updatePlayerDropdowns()">
                             <option value="">-- Seleccionar Jugador --</option>
                             ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
                         </select>
@@ -323,6 +332,26 @@
                 `;
             }
             container.innerHTML = html;
+            updatePlayerDropdowns();
+        }
+
+        // Filtra los despegables para deshabilitar jugadores ya elegidos en otras posiciones
+        function updatePlayerDropdowns() {
+            const selects = Array.from(document.querySelectorAll('.match-player-select'));
+            const selectedValues = selects.map(s => s.value).filter(val => val !== "");
+
+            selects.forEach(currentSelect => {
+                const currentVal = currentSelect.value;
+                Array.from(currentSelect.options).forEach(option => {
+                    if (option.value === "") return;
+                    // Deshabilitar la opción si está seleccionada en otro desplegable
+                    if (selectedValues.includes(option.value) && option.value !== currentVal) {
+                        option.disabled = true;
+                    } else {
+                        option.disabled = false;
+                    }
+                });
+            });
         }
 
         async function saveMatch() {
