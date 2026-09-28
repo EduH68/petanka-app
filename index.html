@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -21,54 +20,84 @@
             <button id="tab-jugadores" onclick="showTab('jugadores')">Jugadores</button>
         </nav>
 
-        <div id="sec-jugadores" class="section">
-            <h2>Gestión de Jugadores</h2>
-            <div class="form-group">
-                <input type="text" id="new-player-name" placeholder="Nombre del jugador">
-                <button class="btn-primary" onclick="addPlayer()">Guardar Jugador</button>
-            </div>
-            <div id="players-list"></div>
-        </div>
-
+        <!-- SECCIÓN TORNEOS -->
         <div id="sec-torneos" class="section active">
-            <h2>Torneos</h2>
-            <div class="form-group">
-                <input type="text" id="tournament-name" placeholder="Ej: Uda Txapelketa 2026">
-                <input type="datetime-local" id="tournament-start">
-                <input type="datetime-local" id="tournament-end">
-                <button class="btn-primary" onclick="createTournament()">Crear Torneo</button>
+            <h2>Gestión de Torneos</h2>
+            <div class="card">
+                <h3>Crear Nuevo Torneo</h3>
+                <div class="form-group">
+                    <label>Nombre del Torneo:</label>
+                    <input type="text" id="tournament-name" placeholder="Ej: Torneo de Verano">
+                </div>
+                <div class="form-group" style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label>Fecha Inicio:</label>
+                        <input type="datetime-local" id="tournament-start">
+                    </div>
+                    <div style="flex:1;">
+                        <label>Fecha Fin:</label>
+                        <input type="datetime-local" id="tournament-end">
+                    </div>
+                </div>
+                <button class="btn-success" onclick="createTournament()">Crear Torneo</button>
             </div>
+
+            <h3>Torneos Registrados</h3>
             <div id="tournaments-list"></div>
         </div>
 
+        <!-- SECCIÓN PARTIDAS -->
         <div id="sec-partidas" class="section">
             <h2>Registrar Partida</h2>
-            <div class="form-group">
-                <select id="match-tournament"></select>
-                <input type="datetime-local" id="match-date">
-                <select id="match-num-players" onchange="renderMatchPlayerInputs()">
-                    <option value="2">2 Jugadores</option>
-                    <option value="3">3 Jugadores</option>
-                    <option value="4" selected>4 Jugadores</option>
-                    <option value="5">5 Jugadores</option>
-                    <option value="6">6 Jugadores</option>
-                    <option value="7">7 Jugadores</option>
-                    <option value="8">8 Jugadores</option>
-                </select>
+            <div class="card">
+                <div class="form-group">
+                    <label>Selecciona Torneo:</label>
+                    <select id="match-tournament"></select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha y Hora:</label>
+                    <input type="datetime-local" id="match-date">
+                </div>
+                <div class="form-group">
+                    <label>Número de Jugadores:</label>
+                    <select id="match-num-players" onchange="renderMatchPlayerInputs()">
+                        <option value="4">4 Jugadores</option>
+                        <option value="5">5 Jugadores</option>
+                        <option value="6">6 Jugadores</option>
+                        <option value="7">7 Jugadores</option>
+                        <option value="8">8 Jugadores</option>
+                    </select>
+                </div>
+
                 <div id="match-players-container"></div>
-                <button class="btn-primary" onclick="saveMatch()">Guardar Partida</button>
+
+                <button class="btn-success" style="margin-top:15px;" onclick="saveMatch()">Guardar Partida</button>
             </div>
         </div>
 
+        <!-- SECCIÓN JUGADORES -->
+        <div id="sec-jugadores" class="section">
+            <h2>Gestión de Jugadores</h2>
+            <div class="card">
+                <div class="form-group">
+                    <input type="text" id="new-player-name" placeholder="Nombre del jugador">
+                </div>
+                <button class="btn-success" onclick="addPlayer()">Guardar Jugador</button>
+            </div>
+
+            <h3>Listado de Jugadores</h3>
+            <div id="players-list"></div>
+        </div>
+
+        <!-- SECCIÓN CLASIFICACIÓN -->
         <div id="sec-clasificacion" class="section">
-            <button class="btn-secondary" onclick="showTab('torneos')">← Volver a Torneos</button>
             <h2 id="clasificacion-title">Clasificación</h2>
+            <button class="btn-primary" style="margin-bottom:15px;" onclick="showTab('torneos')">← Volver a Torneos</button>
             <div id="clasificacion-table-container"></div>
-            <div id="partidas-historial-container"></div>
         </div>
     </div>
 
-    <!-- Script principal -->
-    <script src="app.js"></script>
+    <!-- Carga del script principal de la aplicación -->
+    <script src="app.js?v=2"></script>
 </body>
 </html>
